@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
+import time  # for auto‑refresh
 
 # ============================================================
 CURRENCY = "UGX"
@@ -20,7 +21,7 @@ st.set_page_config(
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-# --- Safe CSS: applied conditionally based on dark_mode ---
+# --- Safe CSS (same as the working version) ---
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
@@ -262,7 +263,7 @@ col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
     <div style="display: flex; align-items: center; flex-wrap: wrap;">
-        <div class="fancy-header">☕ MiDAY Sales System</div>
+        <div class="fancy-header">☕ MiDAY System</div>
         <div class="live-indicator">
             <span class="live-dot"></span> LIVE
         </div>
@@ -316,6 +317,9 @@ def fmt_currency(value):
 # --- Sidebar Filters ---
 st.sidebar.title("🔍 Filters")
 st.sidebar.markdown("---")
+
+# AUTO-REFRESH TOGGLE (NEW)
+auto_refresh = st.sidebar.checkbox("🔄 Auto‑refresh every 30s")
 
 min_date = df["Date"].min().date()
 max_date = df["Date"].max().date()
@@ -430,16 +434,30 @@ with tab1:
         col1.metric("Revenue Change", fmt_currency(delta_rev))
         col2.metric("Profit Change", fmt_currency(delta_profit))
 
+    # ---- TIME SLIDER for the trend chart (NEW) ----
+    st.subheader("📅 Timeline Slider")
+    min_ts = fdf['Date'].min()
+    max_ts = fdf['Date'].max()
+    slider_dates = st.slider(
+        "Drag to zoom into a specific period",
+        min_value=min_ts.to_pydatetime(),
+        max_value=max_ts.to_pydatetime(),
+        value=(min_ts.to_pydatetime(), max_ts.to_pydatetime()),
+        format="YYYY-MM-DD"
+    )
+    filtered_slider = fdf[(fdf['Date'] >= pd.to_datetime(slider_dates[0])) & (fdf['Date'] <= pd.to_datetime(slider_dates[1]))]
+
     col1, col2 = st.columns(2)
     with col1:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            daily = fdf.groupby("Date")["Revenue"].sum().reset_index()
-            fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend", markers=True,
+            daily = filtered_slider.groupby("Date")["Revenue"].sum().reset_index()
+            fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend (slider range)", markers=True,
                           color_discrete_sequence=["#3b82f6"])
             fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              font=dict(family="Inter, sans-serif"))
+                              font=dict(family="Inter, sans-serif"),
+                              transition_duration=500)  # <-- SMOOTH TRANSITION
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
             st.plotly_chart(fig, use_container_width=True)
@@ -451,7 +469,8 @@ with tab1:
             cat_sum = fdf.groupby("Category")["Revenue"].sum().sort_values(ascending=False).reset_index()
             fig = px.pie(cat_sum, names="Category", values="Revenue", hole=0.4,
                          title="Revenue by Category", color_discrete_sequence=px.colors.qualitative.Set2)
-            fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+            fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                              transition_duration=500)
             st.plotly_chart(fig, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -462,7 +481,8 @@ with tab1:
         fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue Over Time",
                       color_discrete_sequence=["#10b981"])
         fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
-                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                          transition_duration=500)
         fig.update_xaxes(showgrid=False)
         fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
         st.plotly_chart(fig, use_container_width=True)
@@ -509,7 +529,8 @@ with tab2:
         barmode="group",
         height=450,
         plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)"
+        paper_bgcolor="rgba(0,0,0,0)",
+        transition_duration=500
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
@@ -567,11 +588,49 @@ with tab3:
         hovermode="x unified",
         height=450,
         plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)"
+        paper_bgcolor="rgba(0,0,0,0)",
+        transition_duration=500
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
     st.plotly_chart(fig, use_container_width=True)
+
+    # ---- ANIMATED BAR RACE (NEW) ----
+    st.subheader("🏁 Animated Bar Race (Monthly Product Revenue)")
+    # Prepare data: group by month and product
+    fdf_month = fdf.copy()
+    fdf_month["Month"] = fdf_month["Date"].dt.to_period("M").astype(str)
+    race_data = fdf_month.groupby(["Month", "Product Name"])["Revenue"].sum().reset_index()
+
+    # Create animated bar race using Plotly's animation_frame
+    if not race_data.empty:
+        # Sort months chronologically
+        months_sorted = sorted(race_data["Month"].unique())
+        race_data["Month"] = pd.Categorical(race_data["Month"], categories=months_sorted, ordered=True)
+        race_data = race_data.sort_values("Month")
+
+        fig_race = px.bar(
+            race_data,
+            x="Revenue",
+            y="Product Name",
+            color="Product Name",
+            orientation="h",
+            animation_frame="Month",
+            range_x=[0, race_data["Revenue"].max() * 1.2],
+            title="Products ranked by Revenue over time",
+            labels={"Revenue": f"{CURRENCY}", "Product Name": "Product"}
+        )
+        fig_race.update_layout(
+            showlegend=False,
+            height=500,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            transition_duration=700
+        )
+        fig_race.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+        st.plotly_chart(fig_race, use_container_width=True)
+    else:
+        st.info("Not enough data for the animated race (need multiple months and products).")
 
     st.subheader("📋 Period Breakdown")
     display = agg_df.copy()
@@ -625,6 +684,12 @@ with tab4:
             file_name="miday_sales_data.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+
+# --- Auto‑refresh logic (NEW) ---
+if auto_refresh:
+    st.sidebar.info("🔄 Auto‑refresh is ON – updating every 30 seconds")
+    time.sleep(30)
+    st.rerun()
 
 # --- Footer ---
 st.sidebar.markdown("---")
