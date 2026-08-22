@@ -12,44 +12,74 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv
 @st.cache_data(ttl=600)
 def load_data():
     try:
-        # 🔥 FIX: skiprows=1 removes the title row (row 0)
-        df = pd.read_csv(SHEET_URL, skiprows=1, encoding='utf-8-sig')
-        df.columns = df.columns.str.strip()  # clean column names
+        # 1. Read the CSV without assuming any header row
+        df_raw = pd.read_csv(SHEET_URL, encoding='utf-8-sig', header=None)
 
-        # If still no "Date" column, fallback to searching
+        # 2. Find the row that contains "Date" in the first column (case-insensitive)
+        header_row_idx = None
+        for idx, row in df_raw.iterrows():
+            first_cell = str(row[0]).strip() if pd.notna(row[0]) else ""
+            if "date" in first_cell.lower():
+                header_row_idx = idx
+                break
+
+        if header_row_idx is None:
+            # If not found, show the first few rows to help debug
+            preview = df_raw.head(5).values.tolist()
+            st.error(f"Could not find a row with 'Date'. First 5 rows: {preview}")
+            return pd.DataFrame()
+
+        # 3. Take data from that row onward
+        df = df_raw.iloc[header_row_idx:].copy()
+        # Set the first row as column names
+        df.columns = df.iloc[0]
+        # Remove the header row from data
+        df = df[1:].reset_index(drop=True)
+
+        # 4. Clean column names: strip spaces and rename if necessary
+        df.columns = df.columns.str.strip()
+        # If the first column is not "Date" but something else, rename it
         if "Date" not in df.columns:
+            # Try to find any column containing "date"
             possible = [c for c in df.columns if "date" in c.lower()]
             if possible:
                 df = df.rename(columns={possible[0]: "Date"})
             else:
-                st.error(f"No date column. Found: {list(df.columns)}")
+                st.error(f"No 'Date' column found after cleaning. Columns: {list(df.columns)}")
                 return pd.DataFrame()
 
-        # Remove rows where Date is missing
-        df = df.dropna(subset=["Date"], how="all")
-        df = df[df["Date"].notna()]
+        # 5. Remove rows where Date is missing
+        df = df.dropna(subset=["Date"])
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
-        # Clean numbers
+        # 6. Clean numeric columns
         for col in ["Unit Price", "Revenue", "COGS"]:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        df["Quantity"] = pd.to_numeric(df.get("Quantity", 0), errors="coerce").fillna(0).astype(int)
+        # 7. Ensure Quantity and Category exist
+        if "Quantity" in df.columns:
+            df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
+        else:
+            df["Quantity"] = 0
+
         df["Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
         df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
+
         return df
+
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
+# Load and show
 df = load_data()
 if df.empty:
     st.stop()
 
-# --- Sidebar filters ---
+# --- Sidebar ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
