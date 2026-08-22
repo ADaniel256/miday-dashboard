@@ -6,37 +6,43 @@ from datetime import datetime
 st.set_page_config(page_title="MiDAY Live", layout="wide")
 st.title("☕ MiDAY System - Live Dashboard")
 
-# Load Excel file from GitHub (raw URL)
-EXCEL_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/miday-dashboard/main/MiDAY%20System.xlsx"
+# =====================================================
+# ✅ Use your raw Excel file URL (already fixed)
+EXCEL_URL = "https://raw.githubusercontent.com/ADaniel256/miday-dashboard/main/MiDAY%20System.xlsx"
+# =====================================================
 
 @st.cache_data(ttl=600)
 def load_data():
     try:
         # Read the "MASTER_SALES" sheet from the Excel file
         df = pd.read_excel(EXCEL_URL, sheet_name="MASTER_SALES")
-        
-        # Drop empty rows
+
+        # Drop rows with missing Date
         df = df.dropna(subset=["Date"], how="all")
         df = df[df["Date"].notna()]
-        
-        # Convert Date
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
-        
+
         # Clean numeric columns
         for col in ["Unit Price", "Revenue", "COGS"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-        
+
+        # Quantity
         if "Quantity" in df.columns:
             df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
         else:
             df["Quantity"] = 0
-            
+
+        # Categories and payment status
         df["Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
         df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
-        
+
+        # Optionally drop rows where Revenue is 0 (if you want)
+        # df = df[df["Revenue"] > 0]
+
         return df
+
     except Exception as e:
         st.error(f"Error loading Excel file: {e}")
         return pd.DataFrame()
@@ -45,7 +51,7 @@ df = load_data()
 if df.empty:
     st.stop()
 
-# --- Sidebar ---
+# --- Sidebar filters ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
@@ -54,11 +60,14 @@ if st.sidebar.button("🔄 Refresh Data"):
 min_d = df["Date"].min().date()
 max_d = df["Date"].max().date()
 dr = st.sidebar.date_input("Date Range", [min_d, max_d], min_value=min_d, max_value=max_d)
+
 cat_options = ["All"] + sorted(df["Category"].dropna().unique().tolist())
 cat = st.sidebar.selectbox("Category", cat_options)
+
 stat_options = ["All"] + sorted(df["Payment Status"].dropna().unique().tolist())
 stat = st.sidebar.selectbox("Payment Status", stat_options)
 
+# Apply filters
 fdf = df.copy()
 if len(dr) == 2:
     fdf = fdf[(fdf["Date"] >= pd.to_datetime(dr[0])) & (fdf["Date"] <= pd.to_datetime(dr[1]))]
@@ -77,26 +86,31 @@ c4.metric("📈 Avg Order", f"${avg:,.0f}")
 
 # --- Charts ---
 col1, col2 = st.columns(2)
+
 with col1:
     daily = fdf.groupby("Date")["Revenue"].sum().reset_index()
     fig = px.bar(daily, x="Date", y="Revenue", title="Revenue Over Time", color_discrete_sequence=["#FF6B6B"])
     st.plotly_chart(fig, use_container_width=True)
+
 with col2:
     cat_sum = fdf.groupby("Category")["Revenue"].sum().sort_values(ascending=False).reset_index()
     fig = px.pie(cat_sum, names="Category", values="Revenue", title="Revenue by Category", hole=0.4)
     st.plotly_chart(fig, use_container_width=True)
 
 col3, col4 = st.columns(2)
+
 with col3:
     top = fdf.groupby("Product Name")["Revenue"].sum().sort_values(ascending=False).head(8).reset_index()
     fig = px.bar(top, y="Product Name", x="Revenue", title="Top 8 Products", orientation="h", color="Revenue")
     st.plotly_chart(fig, use_container_width=True)
+
 with col4:
     pay = fdf.groupby("Payment Status")["Revenue"].sum().reset_index()
     fig = px.pie(pay, names="Payment Status", values="Revenue", title="Revenue by Status",
                  color_discrete_sequence=["#2ECC71", "#F1C40F", "#E74C3C"])
     st.plotly_chart(fig, use_container_width=True)
 
+# --- Raw data table ---
 with st.expander("📋 View Raw Data"):
     st.dataframe(fdf[["Date", "Product Name", "Category", "Quantity", "Unit Price", "Revenue", "Payment Status", "Notes"]],
                  use_container_width=True, height=400)
