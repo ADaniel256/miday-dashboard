@@ -281,12 +281,12 @@ col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
     <div style="display: flex; align-items: center; flex-wrap: wrap;">
-        <div class="fancy-header">☕ MiDAY System</div>
+        <div class="fancy-header">☕ MiDAY Sales Tracking System</div>
         <div class="live-indicator">
             <span class="live-dot"></span> LIVE
         </div>
     </div>
-    <div class="fancy-sub">Real‑time Business Intelligence · Powered by Google Sheets</div>
+    <div class="fancy-sub">Real‑time Business Intelligence · Powered by MiDAY</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
