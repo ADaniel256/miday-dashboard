@@ -11,40 +11,64 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv
 
 @st.cache_data(ttl=600)
 def load_data():
-    df = pd.read_csv(SHEET_URL)
-    df = df.dropna(subset=["Date"], how="all")
-    df = df[df["Date"].notna()]
-    for col in ["Unit Price", "Revenue", "COGS"]:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df.dropna(subset=["Date"])
-    df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
-    df["Category"] = df["Category"].fillna("Uncategorized")
-    df["Payment Status"] = df["Payment Status"].fillna("Unknown")
-    return df
+    try:
+        df = pd.read_csv(SHEET_URL, skip_blank_lines=True)
+        df.columns = df.columns.str.strip()  # remove leading/trailing spaces
+
+        # Find a date column if "Date" isn't there
+        if "Date" not in df.columns:
+            possible_dates = [c for c in df.columns if "date" in c.lower()]
+            if possible_dates:
+                df = df.rename(columns={possible_dates[0]: "Date"})
+            else:
+                st.error(f"No date column found. Columns: {list(df.columns)}")
+                return pd.DataFrame()
+
+        df = df.dropna(subset=["Date"], how="all")
+        df = df[df["Date"].notna()]
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df.dropna(subset=["Date"])
+
+        for col in ["Unit Price", "Revenue", "COGS"]:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+        df["Quantity"] = pd.to_numeric(df.get("Quantity", 0), errors="coerce").fillna(0).astype(int)
+        df["Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
+        df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
+        return df
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return pd.DataFrame()
 
 df = load_data()
 if df.empty:
     st.stop()
 
+# --- Sidebar ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
     st.rerun()
 
-min_d, max_d = df["Date"].min().date(), df["Date"].max().date()
+min_d = df["Date"].min().date()
+max_d = df["Date"].max().date()
 dr = st.sidebar.date_input("Date Range", [min_d, max_d], min_value=min_d, max_value=max_d)
-cat = st.sidebar.selectbox("Category", ["All"] + sorted(df["Category"].unique().tolist()))
-stat = st.sidebar.selectbox("Payment", ["All"] + sorted(df["Payment Status"].unique().tolist()))
+cat_options = ["All"] + sorted(df["Category"].dropna().unique().tolist())
+cat = st.sidebar.selectbox("Category", cat_options)
+stat_options = ["All"] + sorted(df["Payment Status"].dropna().unique().tolist())
+stat = st.sidebar.selectbox("Payment Status", stat_options)
 
 fdf = df.copy()
 if len(dr) == 2:
     fdf = fdf[(fdf["Date"] >= pd.to_datetime(dr[0])) & (fdf["Date"] <= pd.to_datetime(dr[1]))]
-if cat != "All": fdf = fdf[fdf["Category"] == cat]
-if stat != "All": fdf = fdf[fdf["Payment Status"] == stat]
+if cat != "All":
+    fdf = fdf[fdf["Category"] == cat]
+if stat != "All":
+    fdf = fdf[fdf["Payment Status"] == stat]
 
+# --- KPIs ---
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("💰 Revenue", f"${fdf['Revenue'].sum():,.0f}")
 c2.metric("📦 Units", f"{fdf['Quantity'].sum():,}")
@@ -52,6 +76,7 @@ c3.metric("🧾 Orders", f"{len(fdf):,}")
 avg = fdf['Revenue'].sum() / len(fdf) if len(fdf) > 0 else 0
 c4.metric("📈 Avg Order", f"${avg:,.0f}")
 
+# --- Charts ---
 col1, col2 = st.columns(2)
 with col1:
     daily = fdf.groupby("Date")["Revenue"].sum().reset_index()
@@ -69,7 +94,7 @@ with col3:
     st.plotly_chart(fig, use_container_width=True)
 with col4:
     pay = fdf.groupby("Payment Status")["Revenue"].sum().reset_index()
-    fig = px.pie(pay, names="Payment Status", values="Revenue", title="Revenue by Status", 
+    fig = px.pie(pay, names="Payment Status", values="Revenue", title="Revenue by Status",
                  color_discrete_sequence=["#2ECC71", "#F1C40F", "#E74C3C"])
     st.plotly_chart(fig, use_container_width=True)
 
