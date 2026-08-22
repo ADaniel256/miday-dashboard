@@ -15,10 +15,9 @@ def load_data():
         # Read CSV without header
         df_raw = pd.read_csv(SHEET_URL, encoding='utf-8-sig', header=None)
 
-        # Find the first row that contains "Date" in any column (case-insensitive)
+        # Find the first row containing "Date" in any cell (case-insensitive)
         header_row_idx = None
         for idx, row in df_raw.iterrows():
-            # Check each cell in the row
             for cell in row:
                 if isinstance(cell, str) and "date" in cell.lower():
                     header_row_idx = idx
@@ -48,19 +47,34 @@ def load_data():
                 st.error(f"No 'Date' column found. Columns: {list(df.columns)}")
                 return pd.DataFrame()
 
-        # Clean data
+        # Remove rows with missing Date
         df = df.dropna(subset=["Date"])
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
+        # Clean numeric columns (only if they exist)
         for col in ["Unit Price", "Revenue", "COGS"]:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        df["Quantity"] = pd.to_numeric(df.get("Quantity", 0), errors="coerce").fillna(0).astype(int)
-        df["Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
-        df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
+        # Quantity column
+        if "Quantity" in df.columns:
+            df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
+        else:
+            df["Quantity"] = 0
+
+        # Category column
+        if "Category" in df.columns:
+            df["Category"] = df["Category"].fillna("Uncategorized")
+        else:
+            df["Category"] = "Uncategorized"
+
+        # Payment Status column
+        if "Payment Status" in df.columns:
+            df["Payment Status"] = df["Payment Status"].fillna("Unknown")
+        else:
+            df["Payment Status"] = "Unknown"
 
         return df
 
@@ -68,11 +82,12 @@ def load_data():
         st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
+# Load data
 df = load_data()
 if df.empty:
     st.stop()
 
-# --- Sidebar & rest of dashboard (same as before) ---
+# --- Sidebar filters ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
