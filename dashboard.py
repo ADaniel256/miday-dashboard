@@ -10,20 +10,58 @@ import io
 CURRENCY = "UGX"          # Change to "USh", "KES", "$", etc.
 # =====================================================
 
-# --- Page config: COLLAPSED SIDEBAR on mobile ---
+# --- Page config ---
 st.set_page_config(
     page_title="MiDAY Insights",
     layout="wide",
-    initial_sidebar_state="collapsed"   # 👈 Saves space on phones
+    initial_sidebar_state="collapsed"
 )
 
-# --- Custom CSS for Mobile Responsiveness ---
+# --- 🎨 Fancy Custom CSS with Google Fonts ---
 st.markdown("""
 <style>
-    /* Global reset */
-    .main-header { font-size: 2rem; font-weight: 700; color: #1f3a5f; }
-    
-    /* Metric cards */
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;600&display=swap');
+
+    /* Fancy Header Container */
+    .fancy-header {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 3.2rem;
+        background: linear-gradient(135deg, #1f3a5f 0%, #4a6b8a 50%, #2ecc71 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: -10px;
+        padding-top: 10px;
+        letter-spacing: 1px;
+        text-shadow: 2px 2px 20px rgba(26, 67, 113, 0.1);
+        line-height: 1.2;
+    }
+
+    /* Subtitle */
+    .fancy-sub {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 300;
+        font-size: 1.1rem;
+        color: #6c757d;
+        margin-top: 0px;
+        margin-bottom: 5px;
+        letter-spacing: 2px;
+        -webkit-text-fill-color: #6c757d;
+    }
+
+    /* Gradient Divider */
+    .fancy-divider {
+        height: 4px;
+        background: linear-gradient(90deg, #1f3a5f, #2ecc71, #f1c40f);
+        border-radius: 5px;
+        margin-top: 5px;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+
+    /* Metric cards - responsive */
     .metric-card {
         background-color: #f8f9fa;
         border-radius: 10px;
@@ -31,29 +69,33 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin: 5px 0;
+        transition: transform 0.2s;
+    }
+    .metric-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .metric-value {
-        font-size: 1.8rem;
+        font-family: 'Poppins', sans-serif;
         font-weight: 600;
+        font-size: 1.8rem;
         color: #1f3a5f;
     }
     .metric-label {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 400;
         font-size: 0.85rem;
         color: #6c757d;
     }
 
-    /* Force columns to wrap nicely on small screens */
-    .row-widget.stColumns {
-        flex-wrap: wrap !important;
-    }
-    .row-widget.stColumns > div {
-        flex: 1 1 45% !important;   /* 2 cards per row on mobile */
-        min-width: 130px !important;
-        max-width: 100% !important;
-    }
-
-    /* Responsive text sizes */
+    /* Mobile responsive adjustments */
     @media (max-width: 600px) {
+        .fancy-header {
+            font-size: 2rem !important;
+        }
+        .fancy-sub {
+            font-size: 0.85rem !important;
+        }
         .metric-value {
             font-size: 1.3rem !important;
         }
@@ -64,15 +106,28 @@ st.markdown("""
             padding: 8px !important;
             margin: 3px 0 !important;
         }
-        .main-header {
-            font-size: 1.5rem !important;
-        }
-        /* Reduce chart height on mobile */
         .js-plotly-plot .plotly .main-svg {
             height: 350px !important;
         }
+        .row-widget.stColumns {
+            flex-wrap: wrap !important;
+        }
+        .row-widget.stColumns > div {
+            flex: 1 1 45% !important;
+            min-width: 130px !important;
+            max-width: 100% !important;
+        }
     }
 </style>
+""", unsafe_allow_html=True)
+
+# ===================== FANCY HEADER =====================
+st.markdown("""
+<div style="text-align: left;">
+    <div class="fancy-header">☕ MiDAY System</div>
+    <div class="fancy-sub">Live Business Intelligence · Automated Dashboard</div>
+    <div class="fancy-divider"></div>
+</div>
 """, unsafe_allow_html=True)
 
 # --- Data Loader ---
@@ -111,7 +166,7 @@ if df.empty:
 def fmt_currency(value):
     return f"{CURRENCY} {value:,.0f}"
 
-# --- Sidebar Filters (collapsed by default) ---
+# --- Sidebar Filters ---
 st.sidebar.title("🔍 Filters")
 
 min_date = df["Date"].min().date()
@@ -151,7 +206,7 @@ if compare_mode:
         max_value=max_date
     )
 
-# --- Apply filters ---
+# Apply filters
 fdf = df[
     (df["Date"] >= pd.to_datetime(date_range[0])) &
     (df["Date"] <= pd.to_datetime(date_range[1])) &
@@ -176,19 +231,18 @@ tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends
 
 # ===================== TAB 1 =====================
 with tab1:
-    # 5 KPIs on mobile: they'll wrap into 2-3 per row thanks to CSS
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Revenue</div>
+            <div class="metric-label">Total Revenue</div>
             <div class="metric-value">{fmt_currency(fdf['Revenue'].sum())}</div>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Profit</div>
+            <div class="metric-label">Total Profit</div>
             <div class="metric-value">{fmt_currency(fdf['Profit'].sum())}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -196,21 +250,21 @@ with tab1:
         margin = (fdf['Profit'].sum() / fdf['Revenue'].sum() * 100) if fdf['Revenue'].sum() > 0 else 0
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Margin</div>
+            <div class="metric-label">Gross Margin</div>
             <div class="metric-value">{margin:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col4:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Orders</div>
+            <div class="metric-label">Total Orders</div>
             <div class="metric-value">{len(fdf):,}</div>
         </div>
         """, unsafe_allow_html=True)
     with col5:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Units</div>
+            <div class="metric-label">Units Sold</div>
             <div class="metric-value">{fdf['Quantity'].sum():,}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -220,24 +274,27 @@ with tab1:
         col1, col2 = st.columns(2)
         delta_rev = fdf['Revenue'].sum() - fdf_compare['Revenue'].sum()
         delta_profit = fdf['Profit'].sum() - fdf_compare['Profit'].sum()
-        col1.metric("Revenue Change", fmt_currency(delta_rev), delta_color="normal")
-        col2.metric("Profit Change", fmt_currency(delta_profit), delta_color="normal")
+        col1.metric("Revenue Change", fmt_currency(delta_rev))
+        col2.metric("Profit Change", fmt_currency(delta_profit))
 
     col1, col2 = st.columns(2)
     with col1:
         daily = fdf.groupby("Date")["Revenue"].sum().reset_index()
-        fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend", markers=True)
-        fig.update_layout(yaxis_title=CURRENCY, height=350)
+        fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend", markers=True,
+                      color_discrete_sequence=["#1f3a5f"])
+        fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified")
         st.plotly_chart(fig, use_container_width=True)
     with col2:
         cat_sum = fdf.groupby("Category")["Revenue"].sum().sort_values(ascending=False).reset_index()
-        fig = px.pie(cat_sum, names="Category", values="Revenue", hole=0.4, title="Revenue by Category")
+        fig = px.pie(cat_sum, names="Category", values="Revenue", hole=0.4,
+                     title="Revenue by Category", color_discrete_sequence=px.colors.qualitative.Set2)
         fig.update_layout(height=350)
         st.plotly_chart(fig, use_container_width=True)
 
     cumulative = fdf.sort_values("Date")
     cumulative["Cumulative Revenue"] = cumulative["Revenue"].cumsum()
-    fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue")
+    fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue Over Time",
+                  color_discrete_sequence=["#2ecc71"])
     fig.update_layout(yaxis_title=CURRENCY, height=350)
     st.plotly_chart(fig, use_container_width=True)
 
