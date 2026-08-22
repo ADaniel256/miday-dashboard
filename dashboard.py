@@ -6,20 +6,72 @@ from datetime import datetime, timedelta
 import io
 
 # =====================================================
-# 🌍 Currency setting – change this to any symbol
-CURRENCY = "UGX"          # e.g., "USh", "KES", "$", "€"
+# 🌍 Currency setting
+CURRENCY = "UGX"          # Change to "USh", "KES", "$", etc.
 # =====================================================
 
-st.set_page_config(page_title="MiDAY Insights", layout="wide", initial_sidebar_state="expanded")
+# --- Page config: COLLAPSED SIDEBAR on mobile ---
+st.set_page_config(
+    page_title="MiDAY Insights",
+    layout="wide",
+    initial_sidebar_state="collapsed"   # 👈 Saves space on phones
+)
 
-# --- Custom CSS ---
+# --- Custom CSS for Mobile Responsiveness ---
 st.markdown("""
 <style>
-    .main-header { font-size: 2.5rem; font-weight: 700; color: #1f3a5f; }
-    .sub-header { font-size: 1.2rem; color: #4a6b8a; }
-    .metric-card { background-color: #f8f9fa; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .metric-value { font-size: 2rem; font-weight: 600; color: #1f3a5f; }
-    .metric-label { font-size: 0.9rem; color: #6c757d; }
+    /* Global reset */
+    .main-header { font-size: 2rem; font-weight: 700; color: #1f3a5f; }
+    
+    /* Metric cards */
+    .metric-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 5px 0;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #1f3a5f;
+    }
+    .metric-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    /* Force columns to wrap nicely on small screens */
+    .row-widget.stColumns {
+        flex-wrap: wrap !important;
+    }
+    .row-widget.stColumns > div {
+        flex: 1 1 45% !important;   /* 2 cards per row on mobile */
+        min-width: 130px !important;
+        max-width: 100% !important;
+    }
+
+    /* Responsive text sizes */
+    @media (max-width: 600px) {
+        .metric-value {
+            font-size: 1.3rem !important;
+        }
+        .metric-label {
+            font-size: 0.7rem !important;
+        }
+        .metric-card {
+            padding: 8px !important;
+            margin: 3px 0 !important;
+        }
+        .main-header {
+            font-size: 1.5rem !important;
+        }
+        /* Reduce chart height on mobile */
+        .js-plotly-plot .plotly .main-svg {
+            height: 350px !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -55,11 +107,11 @@ df = load_data()
 if df.empty:
     st.stop()
 
-# --- Helper function ---
+# --- Helper ---
 def fmt_currency(value):
     return f"{CURRENCY} {value:,.0f}"
 
-# --- Sidebar Filters ---
+# --- Sidebar Filters (collapsed by default) ---
 st.sidebar.title("🔍 Filters")
 
 min_date = df["Date"].min().date()
@@ -99,7 +151,7 @@ if compare_mode:
         max_value=max_date
     )
 
-# Apply filters
+# --- Apply filters ---
 fdf = df[
     (df["Date"] >= pd.to_datetime(date_range[0])) &
     (df["Date"] <= pd.to_datetime(date_range[1])) &
@@ -119,23 +171,24 @@ if compare_mode and len(date_range_2) == 2:
 else:
     fdf_compare = pd.DataFrame()
 
-# --- Tabs (CORRECTED: tab1, tab2, tab3, tab4) ---
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Product Analysis", "📅 Trends & Breakdowns", "📋 Raw Data"])
+# --- Tabs ---
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "📋 Raw"])
 
-# ===================== TAB 1: OVERVIEW =====================
+# ===================== TAB 1 =====================
 with tab1:
+    # 5 KPIs on mobile: they'll wrap into 2-3 per row thanks to CSS
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Total Revenue</div>
+            <div class="metric-label">Revenue</div>
             <div class="metric-value">{fmt_currency(fdf['Revenue'].sum())}</div>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Total Profit</div>
+            <div class="metric-label">Profit</div>
             <div class="metric-value">{fmt_currency(fdf['Profit'].sum())}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -143,30 +196,30 @@ with tab1:
         margin = (fdf['Profit'].sum() / fdf['Revenue'].sum() * 100) if fdf['Revenue'].sum() > 0 else 0
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Gross Margin</div>
+            <div class="metric-label">Margin</div>
             <div class="metric-value">{margin:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col4:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Total Orders</div>
+            <div class="metric-label">Orders</div>
             <div class="metric-value">{len(fdf):,}</div>
         </div>
         """, unsafe_allow_html=True)
     with col5:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Units Sold</div>
+            <div class="metric-label">Units</div>
             <div class="metric-value">{fdf['Quantity'].sum():,}</div>
         </div>
         """, unsafe_allow_html=True)
 
     if compare_mode and not fdf_compare.empty:
         st.subheader("📊 Period Comparison")
+        col1, col2 = st.columns(2)
         delta_rev = fdf['Revenue'].sum() - fdf_compare['Revenue'].sum()
         delta_profit = fdf['Profit'].sum() - fdf_compare['Profit'].sum()
-        col1, col2 = st.columns(2)
         col1.metric("Revenue Change", fmt_currency(delta_rev), delta_color="normal")
         col2.metric("Profit Change", fmt_currency(delta_profit), delta_color="normal")
 
@@ -174,20 +227,21 @@ with tab1:
     with col1:
         daily = fdf.groupby("Date")["Revenue"].sum().reset_index()
         fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend", markers=True)
-        fig.update_layout(yaxis_title=CURRENCY)
+        fig.update_layout(yaxis_title=CURRENCY, height=350)
         st.plotly_chart(fig, use_container_width=True)
     with col2:
         cat_sum = fdf.groupby("Category")["Revenue"].sum().sort_values(ascending=False).reset_index()
         fig = px.pie(cat_sum, names="Category", values="Revenue", hole=0.4, title="Revenue by Category")
+        fig.update_layout(height=350)
         st.plotly_chart(fig, use_container_width=True)
 
     cumulative = fdf.sort_values("Date")
     cumulative["Cumulative Revenue"] = cumulative["Revenue"].cumsum()
-    fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue Over Time")
-    fig.update_layout(yaxis_title=CURRENCY)
+    fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue")
+    fig.update_layout(yaxis_title=CURRENCY, height=350)
     st.plotly_chart(fig, use_container_width=True)
 
-# ===================== TAB 2: PRODUCT ANALYSIS =====================
+# ===================== TAB 2 =====================
 with tab2:
     st.subheader("📦 Product Performance")
     prod_perf = fdf.groupby("Product Name").agg({
@@ -225,7 +279,8 @@ with tab2:
         yaxis=dict(title=f"{CURRENCY}", side="left"),
         yaxis2=dict(title="Margin %", overlaying="y", side="right"),
         hovermode="x unified",
-        barmode="group"
+        barmode="group",
+        height=450
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -244,7 +299,7 @@ with tab2:
         mime="text/csv"
     )
 
-# ===================== TAB 3: TRENDS & BREAKDOWNS =====================
+# ===================== TAB 3 =====================
 with tab3:
     st.subheader("📅 Trends and Breakdowns")
     gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], horizontal=True)
@@ -278,7 +333,8 @@ with tab3:
         xaxis=dict(title="Period"),
         yaxis=dict(title=f"{CURRENCY}", side="left"),
         yaxis2=dict(title="Profit / Margin %", overlaying="y", side="right"),
-        hovermode="x unified"
+        hovermode="x unified",
+        height=450
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -296,7 +352,7 @@ with tab3:
         mime="text/csv"
     )
 
-# ===================== TAB 4: RAW DATA =====================
+# ===================== TAB 4 =====================
 with tab4:
     st.subheader("📋 Transaction Details")
     st.dataframe(
@@ -336,5 +392,5 @@ with tab4:
 
 # --- Footer ---
 st.sidebar.markdown("---")
-st.sidebar.caption(f"Data updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-st.sidebar.caption("💡 Click 'Refresh Data' to fetch the latest from Google Sheets")
+st.sidebar.caption(f"Updated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+st.sidebar.caption("💡 Tap ☰ to open filters")
