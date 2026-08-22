@@ -14,7 +14,7 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 # ====================================================
-# COFFEE THEME CSS (same as before – kept concise)
+# COFFEE THEME CSS
 # ====================================================
 if st.session_state.dark_mode:
     st.markdown("""
@@ -48,10 +48,11 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# ---- Shared CSS (glass, fonts, animations) ----
+# ---- Shared CSS ----
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
+
     .fancy-header {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -92,6 +93,7 @@ st.markdown("""
         0%, 100% { opacity: 0.4; transform: scaleX(1); }
         50% { opacity: 0.8; transform: scaleX(1.01); }
     }
+
     .live-indicator {
         display: inline-flex;
         align-items: center;
@@ -120,6 +122,7 @@ st.markdown("""
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.4; transform: scale(0.8); }
     }
+
     .metric-card {
         border-radius: 24px;
         padding: 24px 16px;
@@ -180,6 +183,7 @@ st.markdown("""
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
+
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background: rgba(255,248,240,0.2);
@@ -208,6 +212,7 @@ st.markdown("""
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
     }
+
     .chart-container {
         backdrop-filter: blur(8px);
         border-radius: 24px;
@@ -222,6 +227,7 @@ st.markdown("""
         box-shadow: 0 8px 40px rgba(139,90,43,0.03);
     }
     .stSidebar { backdrop-filter: blur(20px) !important; box-shadow: 4px 0 40px rgba(0,0,0,0.01); }
+
     @media (max-width: 600px) {
         .fancy-header { font-size: 2.6rem !important; }
         .fancy-sub { font-size: 0.8rem !important; }
@@ -254,10 +260,10 @@ with col_toggle:
         st.rerun()
 
 # ============================================================
-# DATA LOADER – Sales + Expenses
+# DATA LOADERS
 # ============================================================
-CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"      # <-- REPLACE
-CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=1512430292&single=true&output=csv"      # <-- REPLACE
+CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pubhtml?gid=2071886823&single=true"      # <-- REPLACE
+CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pubhtml?gid=1512430292&single=true"      # <-- REPLACE
 
 @st.cache_data(ttl=600)
 def load_sales():
@@ -288,9 +294,7 @@ def load_expenses():
     df = df[df["Date"].notna()]
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
-    # Map columns – adjust if your sheet has different names
-    # Typical columns: Date, Expense Type, Category, Description, Amount (UGX)
-    # We'll rename if needed
+    # Map columns – adjust to your sheet
     if "Amount (UGX)" in df.columns:
         df["Amount"] = pd.to_numeric(df["Amount (UGX)"], errors="coerce").fillna(0)
     elif "Amount" in df.columns:
@@ -309,20 +313,7 @@ if sales_df.empty:
     st.error("Sales data not loaded. Check your CSV URL.")
     st.stop()
 
-# --- Merge sales and expenses by date for aggregated KPIs ---
-# Compute total expenses per day to combine with sales
-expenses_daily = expenses_df.groupby("Date")["Amount"].sum().reset_index()
-expenses_daily.columns = ["Date", "Expenses"]
-
-# Merge with sales data (left join)
-merged = pd.merge(sales_df, expenses_daily, on="Date", how="left")
-merged["Expenses"] = merged["Expenses"].fillna(0)
-
-# Compute Net Profit (Revenue - COGS - Expenses)
-merged["Net Profit"] = merged["Revenue"] - merged["COGS"] - merged["Expenses"]
-
-# We'll use merged for the Overview KPIs and trends, but keep separate for detailed views.
-
+# --- Helper ---
 def fmt_currency(v):
     return f"{CURRENCY} {v:,.0f}"
 
@@ -336,9 +327,18 @@ animation_speed = st.sidebar.slider("🏁 Bar Race Speed (ms per frame)", 300, 5
 min_date = sales_df["Date"].min().date()
 max_date = sales_df["Date"].max().date()
 date_range = st.sidebar.date_input("Date Range", [min_date, max_date])
+
+# Sales filters
 categories = st.sidebar.multiselect("Category", sorted(sales_df["Category"].unique()), default=sorted(sales_df["Category"].unique()))
 statuses = st.sidebar.multiselect("Payment Status", sorted(sales_df["Payment Status"].unique()), default=sorted(sales_df["Payment Status"].unique()))
 products = st.sidebar.multiselect("Product (optional)", sorted(sales_df["Product Name"].unique()), default=sorted(sales_df["Product Name"].unique()))
+
+# Expense Type filter (NEW)
+expense_types = st.sidebar.multiselect(
+    "Expense Type",
+    options=sorted(expenses_df["Expense Type"].unique()),
+    default=sorted(expenses_df["Expense Type"].unique())
+)
 
 # Filter sales
 filtered_sales = sales_df[
@@ -349,10 +349,11 @@ filtered_sales = sales_df[
     (sales_df["Product Name"].isin(products))
 ]
 
-# Filter expenses to same date range
+# Filter expenses (including Expense Type)
 filtered_expenses = expenses_df[
     (expenses_df["Date"] >= pd.to_datetime(date_range[0])) &
-    (expenses_df["Date"] <= pd.to_datetime(date_range[1]))
+    (expenses_df["Date"] <= pd.to_datetime(date_range[1])) &
+    (expenses_df["Expense Type"].isin(expense_types))
 ]
 
 # --- Compute KPIs ---
@@ -364,7 +365,7 @@ net_profit = gross_profit - total_expenses
 margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
 net_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-# --- Tabs (now 5 tabs) ---
+# --- Tabs (5 tabs) ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📋 Raw"])
 
 # ===== TAB 1: OVERVIEW =====
@@ -381,7 +382,7 @@ with tab1:
     with col1:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            # Revenue vs Expenses trend
+            # Revenue vs Expenses
             daily_rev = filtered_sales.groupby("Date")["Revenue"].sum().reset_index()
             daily_exp = filtered_expenses.groupby("Date")["Amount"].sum().reset_index()
             merged_daily = pd.merge(daily_rev, daily_exp, on="Date", how="outer").fillna(0)
@@ -398,18 +399,31 @@ with tab1:
     with col2:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            # Expense breakdown by category
-            exp_cat = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index()
-            if not exp_cat.empty:
-                fig = px.pie(exp_cat, names="Expense Category", values="Amount", hole=0.4,
-                             title="Expense Breakdown", color_discrete_sequence=px.colors.qualitative.Set2)
+            # Toggle for expense breakdown
+            breakdown_type = st.radio(
+                "Breakdown expenses by:",
+                ["Category", "Expense Type"],
+                horizontal=True,
+                key="expense_breakdown_overview"
+            )
+            if breakdown_type == "Category":
+                exp_group = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index()
+                x_col = "Expense Category"
+            else:
+                exp_group = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index()
+                x_col = "Expense Type"
+
+            if not exp_group.empty:
+                fig = px.pie(exp_group, names=x_col, values="Amount", hole=0.4,
+                             title=f"Expenses by {breakdown_type}",
+                             color_discrete_sequence=px.colors.qualitative.Set2)
                 fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No expense data for this period.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-# ===== TAB 2: PRODUCTS (unchanged from before) =====
+# ===== TAB 2: PRODUCTS =====
 with tab2:
     st.subheader("📦 Product Performance")
     prod = filtered_sales.groupby("Product Name").agg({"Revenue": "sum", "Profit": "sum", "Quantity": "sum"}).reset_index()
@@ -444,7 +458,7 @@ with tab2:
 
     st.download_button("⬇️ Download Product Report (CSV)", prod.to_csv(index=False), file_name="product_performance.csv")
 
-# ===== TAB 3: TRENDS (Sales) =====
+# ===== TAB 3: TRENDS =====
 with tab3:
     st.subheader("📅 Sales Trends and Breakdowns")
     gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], horizontal=True)
@@ -555,9 +569,22 @@ with tab4:
     with col2:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            exp_cat = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
-            if not exp_cat.empty:
-                fig = px.bar(exp_cat, x="Expense Category", y="Amount", title="Expense by Category",
+            # Toggle for Expenses tab
+            exp_breakdown_tab = st.radio(
+                "Breakdown by:",
+                ["Category", "Expense Type"],
+                horizontal=True,
+                key="expense_breakdown_tab"
+            )
+            if exp_breakdown_tab == "Category":
+                exp_group_tab = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
+                x_col_tab = "Expense Category"
+            else:
+                exp_group_tab = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
+                x_col_tab = "Expense Type"
+
+            if not exp_group_tab.empty:
+                fig = px.bar(exp_group_tab, x=x_col_tab, y="Amount", title=f"Expenses by {exp_breakdown_tab}",
                              color_discrete_sequence=["#8B5A2B"])
                 fig.update_layout(yaxis_title=CURRENCY, height=350,
                                   plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
@@ -568,7 +595,6 @@ with tab4:
                 st.info("No expense data.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # Detailed expense table
     with st.expander("📋 Detailed Expense Transactions"):
         if not filtered_expenses.empty:
             st.dataframe(filtered_expenses[["Date", "Expense Category", "Expense Type", "Description", "Amount", "Status"]]
@@ -576,7 +602,6 @@ with tab4:
         else:
             st.info("No expenses in this period.")
 
-    # Download expenses
     st.download_button("⬇️ Download Expenses CSV", filtered_expenses.to_csv(index=False), file_name="expenses.csv")
 
 # ===== TAB 5: RAW DATA (Sales) =====
