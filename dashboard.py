@@ -268,7 +268,7 @@ with col_title:
             <span class="live-dot"></span> LIVE
         </div>
     </div>
-    <div class="fancy-sub">Real‑time Business Intelligence · Powered by MiDAY</div>
+    <div class="fancy-sub">Real‑time Business Intelligence · Powered by MiDAY Investments</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
@@ -321,7 +321,7 @@ st.sidebar.markdown("---")
 # Auto‑refresh toggle
 auto_refresh = st.sidebar.checkbox("🔄 Auto‑refresh every 30s")
 
-# Animation speed slider (for bar race)
+# ⭐ SPEED SLIDER – this controls the animation speed of the bar race
 animation_speed = st.sidebar.slider(
     "🏁 Bar Race Speed (ms per frame)",
     min_value=300,
