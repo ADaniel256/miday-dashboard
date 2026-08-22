@@ -4,14 +4,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
-import time
 
 # =====================================================
 # 🌍 Currency setting
 CURRENCY = "UGX"
 # =====================================================
 
-# --- Page config ---
 st.set_page_config(
     page_title="MiDAY Insights",
     layout="wide",
@@ -19,26 +17,18 @@ st.set_page_config(
     page_icon="☕"
 )
 
-# --- Custom CSS for Silicon Valley look ---
+# --- Silicon Valley Grade CSS ---
 st.markdown("""
 <style>
-    /* ----- Google Fonts ----- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
 
-    /* ----- Global reset & theming ----- */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    /* Background with subtle gradient */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #e9edf5 100%);
         transition: background 0.3s ease;
     }
 
-    /* Dark mode overrides (will be toggled via class) */
     .dark-mode .stApp {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     }
@@ -51,15 +41,16 @@ st.markdown("""
     .dark-mode .metric-value { color: #e2e8f0 !important; }
     .dark-mode .metric-label { color: #94a3b8 !important; }
     .dark-mode .fancy-sub { color: #94a3b8 !important; }
-    .dark-mode .stTabs [data-baseweb="tab"] {
-        color: #94a3b8 !important;
-    }
+    .dark-mode .stTabs [data-baseweb="tab"] { color: #94a3b8 !important; }
     .dark-mode .stTabs [aria-selected="true"] {
         color: #facc15 !important;
         border-bottom-color: #facc15 !important;
     }
+    .dark-mode .chart-container {
+        background: rgba(30, 41, 59, 0.3) !important;
+        border-color: rgba(255,255,255,0.05) !important;
+    }
 
-    /* ----- Glass-morphism metric cards ----- */
     .metric-card {
         background: rgba(255, 255, 255, 0.6);
         backdrop-filter: blur(10px);
@@ -85,19 +76,13 @@ st.markdown("""
         transition: opacity 0.6s;
         pointer-events: none;
     }
-    .metric-card:hover::before {
-        opacity: 1;
-    }
+    .metric-card:hover::before { opacity: 1; }
     .metric-card:hover {
         transform: translateY(-4px) scale(1.02);
         box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
         border-color: rgba(255, 255, 255, 0.6);
     }
-    .metric-icon {
-        font-size: 2rem;
-        margin-bottom: 4px;
-        display: block;
-    }
+    .metric-icon { font-size: 2rem; margin-bottom: 4px; display: block; }
     .metric-value {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -116,7 +101,6 @@ st.markdown("""
         margin-top: 4px;
     }
 
-    /* ----- Fancy Header ----- */
     .fancy-header {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -148,7 +132,6 @@ st.markdown("""
         opacity: 0.6;
     }
 
-    /* ----- Tabs styling ----- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background: rgba(255,255,255,0.3);
@@ -183,18 +166,6 @@ st.markdown("""
         color: #facc15 !important;
     }
 
-    /* ----- Sidebar ----- */
-    .css-1d391kg, .css-1aumxhk {
-        background: rgba(255,255,255,0.5) !important;
-        backdrop-filter: blur(16px) !important;
-        border-right: 1px solid rgba(255,255,255,0.15) !important;
-    }
-    .dark-mode .css-1d391kg, .dark-mode .css-1aumxhk {
-        background: rgba(15, 23, 42, 0.8) !important;
-        border-right: 1px solid rgba(255,255,255,0.05) !important;
-    }
-
-    /* ----- Charts containers ----- */
     .chart-container {
         background: rgba(255,255,255,0.4);
         backdrop-filter: blur(8px);
@@ -208,29 +179,7 @@ st.markdown("""
         border-color: rgba(59, 130, 246, 0.3);
         box-shadow: 0 8px 30px rgba(0,0,0,0.04);
     }
-    .dark-mode .chart-container {
-        background: rgba(30, 41, 59, 0.3);
-        border-color: rgba(255,255,255,0.05);
-    }
 
-    /* ----- Toggle button (dark mode) ----- */
-    .dark-toggle {
-        display: inline-block;
-        background: rgba(255,255,255,0.2);
-        backdrop-filter: blur(8px);
-        border-radius: 30px;
-        padding: 6px 12px;
-        border: 1px solid rgba(255,255,255,0.15);
-        cursor: pointer;
-        transition: all 0.2s;
-        font-size: 0.8rem;
-        color: #0f172a;
-    }
-    .dark-toggle:hover {
-        background: rgba(255,255,255,0.3);
-    }
-
-    /* ----- Responsive ----- */
     @media (max-width: 600px) {
         .fancy-header { font-size: 2.4rem !important; }
         .fancy-sub { font-size: 0.85rem !important; }
@@ -244,33 +193,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Dark mode toggle via session state ---
+# --- Dark mode toggle ---
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-# Toggle button in sidebar (but we want it in header, so we'll place it with a column layout)
-
-# --- Fancy Header with dark mode toggle ---
 col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
     <div class="fancy-header">☕ MiDAY System</div>
-    <div class="fancy-sub">Live Business Intelligence · Powered by Google Sheets</div>
+    <div class="fancy-sub">Live Business Intelligence · Powered by MiDAY</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
 with col_toggle:
-    # Dark mode toggle button
     if st.button("🌙" if not st.session_state.dark_mode else "☀️", help="Toggle dark mode"):
         st.session_state.dark_mode = not st.session_state.dark_mode
         st.rerun()
 
-# Apply dark mode class if enabled
 if st.session_state.dark_mode:
     st.markdown('<body class="dark-mode">', unsafe_allow_html=True)
 
 # --- Data Loader ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE WITH YOUR LINK
 
 @st.cache_data(ttl=600)
 def load_data():
@@ -297,17 +241,16 @@ def load_data():
         st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
-# --- Show a spinner while loading ---
 with st.spinner("Fetching live data..."):
     df = load_data()
 if df.empty:
     st.stop()
 
-# --- Helper functions ---
+# --- Helpers ---
 def fmt_currency(value):
     return f"{CURRENCY} {value:,.0f}"
 
-# --- Sidebar Filters (collapsed by default) ---
+# --- Sidebar ---
 st.sidebar.title("🔍 Filters")
 
 min_date = df["Date"].min().date()
@@ -370,9 +313,10 @@ else:
 # --- Tabs ---
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "📋 Raw"])
 
-# ===================== TAB 1 =====================
+# ============================================================
+# TAB 1: OVERVIEW
+# ============================================================
 with tab1:
-    # Metrics with icons
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.markdown(f"""
@@ -424,7 +368,6 @@ with tab1:
         col1.metric("Revenue Change", fmt_currency(delta_rev))
         col2.metric("Profit Change", fmt_currency(delta_profit))
 
-    # Charts with containers
     col1, col2 = st.columns(2)
     with col1:
         with st.container():
@@ -432,14 +375,8 @@ with tab1:
             daily = fdf.groupby("Date")["Revenue"].sum().reset_index()
             fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend", markers=True,
                           color_discrete_sequence=["#3b82f6"])
-            fig.update_layout(
-                yaxis_title=CURRENCY,
-                height=350,
-                hovermode="x unified",
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Inter, sans-serif")
-            )
+            fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
+                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
             st.plotly_chart(fig, use_container_width=True)
@@ -455,7 +392,6 @@ with tab1:
             st.plotly_chart(fig, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # Cumulative chart
     with st.container():
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         cumulative = fdf.sort_values("Date")
@@ -469,17 +405,171 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ===================== TAB 2 (Products) =====================
-# ... (kept same as previous but we can add similar styling)
-# I'll abbreviate for brevity, but in final answer I'll include full code.
+# ============================================================
+# TAB 2: PRODUCTS
+# ============================================================
+with tab2:
+    st.subheader("📦 Product Performance")
+    prod_perf = fdf.groupby("Product Name").agg({
+        "Revenue": "sum",
+        "Profit": "sum",
+        "Quantity": "sum"
+    }).reset_index()
+    prod_perf["Margin %"] = (prod_perf["Profit"] / prod_perf["Revenue"] * 100).round(1).fillna(0)
+    prod_perf = prod_perf.sort_values("Revenue", ascending=False)
 
-# ===================== TAB 3 (Trends) =====================
-# ... same
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=prod_perf["Product Name"],
+        y=prod_perf["Revenue"],
+        name="Revenue",
+        marker_color="#FF6B6B"
+    ))
+    fig.add_trace(go.Bar(
+        x=prod_perf["Product Name"],
+        y=prod_perf["Profit"],
+        name="Profit",
+        marker_color="#2ECC71"
+    ))
+    fig.add_trace(go.Scatter(
+        x=prod_perf["Product Name"],
+        y=prod_perf["Margin %"],
+        name="Margin %",
+        mode="lines+markers",
+        yaxis="y2",
+        line=dict(color="#F1C40F", width=3),
+        marker=dict(size=10)
+    ))
+    fig.update_layout(
+        xaxis=dict(title="Product"),
+        yaxis=dict(title=f"{CURRENCY}", side="left"),
+        yaxis2=dict(title="Margin %", overlaying="y", side="right"),
+        hovermode="x unified",
+        barmode="group",
+        height=450,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+    st.plotly_chart(fig, use_container_width=True)
 
-# ===================== TAB 4 (Raw) =====================
-# ... same
+    with st.expander("📋 Detailed Product Data"):
+        st.dataframe(prod_perf.style.format({
+            "Revenue": fmt_currency,
+            "Profit": fmt_currency,
+            "Quantity": "{:,}",
+            "Margin %": "{:.1f}%"
+        }), use_container_width=True)
 
-# --- Footer (status) ---
+    st.download_button(
+        label="⬇️ Download Product Report (CSV)",
+        data=prod_perf.to_csv(index=False),
+        file_name="product_performance.csv",
+        mime="text/csv"
+    )
+
+# ============================================================
+# TAB 3: TRENDS
+# ============================================================
+with tab3:
+    st.subheader("📅 Trends and Breakdowns")
+    gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], horizontal=True)
+
+    def agg_period(df, period):
+        df_copy = df.copy()
+        if period == "Daily":
+            df_copy["Period"] = df_copy["Date"].dt.date
+        elif period == "Weekly":
+            df_copy["Period"] = df_copy["Date"].dt.to_period("W").apply(lambda r: r.start_time.date())
+        else:
+            df_copy["Period"] = df_copy["Date"].dt.to_period("M").apply(lambda r: r.start_time.date())
+        agg = df_copy.groupby("Period").agg({
+            "Revenue": "sum",
+            "Profit": "sum",
+            "Quantity": "sum",
+            "Date": "count"
+        }).rename(columns={"Date": "Orders"}).reset_index()
+        agg["Margin %"] = (agg["Profit"] / agg["Revenue"] * 100).round(1).fillna(0)
+        return agg
+
+    agg_df = agg_period(fdf, gran)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=agg_df["Period"], y=agg_df["Revenue"], name="Revenue", marker_color="#FF6B6B"))
+    fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Profit"], name="Profit", mode="lines+markers",
+                             line=dict(color="#2ECC71", width=3), marker=dict(size=8), yaxis="y2"))
+    fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Margin %"], name="Margin %", mode="lines+markers",
+                             line=dict(color="#F1C40F", width=2, dash="dash"), marker=dict(size=6), yaxis="y2"))
+    fig.update_layout(
+        xaxis=dict(title="Period"),
+        yaxis=dict(title=f"{CURRENCY}", side="left"),
+        yaxis2=dict(title="Profit / Margin %", overlaying="y", side="right"),
+        hovermode="x unified",
+        height=450,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("📋 Period Breakdown")
+    display = agg_df.copy()
+    display["Period"] = display["Period"].astype(str)
+    display["Revenue"] = display["Revenue"].apply(fmt_currency)
+    display["Profit"] = display["Profit"].apply(fmt_currency)
+    display["Margin %"] = display["Margin %"].apply(lambda x: f"{x:.1f}%")
+    st.dataframe(display, use_container_width=True)
+
+    st.download_button(
+        label="⬇️ Download Breakdown CSV",
+        data=agg_df.to_csv(index=False),
+        file_name=f"miday_{gran.lower()}_breakdown.csv",
+        mime="text/csv"
+    )
+
+# ============================================================
+# TAB 4: RAW DATA
+# ============================================================
+with tab4:
+    st.subheader("📋 Transaction Details")
+    st.dataframe(
+        fdf[["Date", "Product Name", "Category", "Quantity", "Unit Price",
+             "Revenue", "COGS", "Profit", "Margin %", "Payment Status", "Notes"]]
+        .style.format({
+            "Unit Price": fmt_currency,
+            "Revenue": fmt_currency,
+            "COGS": fmt_currency,
+            "Profit": fmt_currency,
+            "Margin %": "{:.1f}%",
+            "Quantity": "{:,}"
+        }),
+        use_container_width=True,
+        height=500
+    )
+
+    col1, col2 = st.columns(2)
+    with col1:
+        csv = fdf.to_csv(index=False)
+        st.download_button(
+            label="⬇️ Download as CSV",
+            data=csv,
+            file_name="miday_sales_data.csv",
+            mime="text/csv"
+        )
+    with col2:
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            fdf.to_excel(writer, index=False, sheet_name='Sales')
+        st.download_button(
+            label="⬇️ Download as Excel",
+            data=output.getvalue(),
+            file_name="miday_sales_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+# --- Footer ---
 st.sidebar.markdown("---")
 st.sidebar.caption(f"🔄 Data refreshed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 st.sidebar.caption("💡 Tap ☰ to open filters")
