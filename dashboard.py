@@ -262,8 +262,8 @@ with col_toggle:
 # ============================================================
 # DATA LOADERS
 # ============================================================
-CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pubhtml?gid=2071886823&single=true"      # <-- REPLACE
-CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pubhtml?gid=1512430292&single=true"      # <-- REPLACE
+CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"      # <-- REPLACE
+CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=1512430292&single=true&output=csv"      # <-- REPLACE
 
 @st.cache_data(ttl=600)
 def load_sales():
