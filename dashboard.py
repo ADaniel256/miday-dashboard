@@ -24,7 +24,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Data Loader (Google Sheets CSV) ---
-CSV_URL = "YOUR_PUBLISHED_CSV_URL"  # <-- REPLACE WITH YOUR LINK
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE WITH YOUR LINK
 
 @st.cache_data(ttl=600)
 def load_data():
