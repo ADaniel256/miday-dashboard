@@ -4,10 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
-import time
 
 # =====================================================
-# 🌍 Currency setting
 CURRENCY = "UGX"
 # =====================================================
 
@@ -18,16 +16,14 @@ st.set_page_config(
     page_icon="☕"
 )
 
-# --- Advanced CSS with motion and animations ---
+# --- Pure CSS Animations (NO JavaScript) ---
 st.markdown("""
 <style>
-    /* ----- Google Fonts ----- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
 
-    /* ----- Reset & Global ----- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    /* ----- Animated gradient background (moving waves) ----- */
+    /* Moving gradient background */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #e9edf5 100%);
         transition: background 0.5s ease;
@@ -56,7 +52,7 @@ st.markdown("""
                     radial-gradient(circle at 70% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
     }
 
-    /* ----- Dark mode overrides ----- */
+    /* Dark mode */
     .dark-mode .stApp {
         background: linear-gradient(135deg, #0a0f1a 0%, #1a2332 100%);
     }
@@ -82,12 +78,8 @@ st.markdown("""
         background: rgba(20, 30, 50, 0.4) !important;
         border-color: rgba(255,255,255,0.05) !important;
     }
-    .dark-mode .stSidebar {
-        background: rgba(10, 15, 26, 0.8) !important;
-        border-right: 1px solid rgba(255,255,255,0.05) !important;
-    }
 
-    /* ----- Glass-morphism metric cards with shimmer ----- */
+    /* Glass-morphism metric cards with shimmer on hover */
     .metric-card {
         background: rgba(255, 255, 255, 0.5);
         backdrop-filter: blur(12px);
@@ -142,6 +134,7 @@ st.markdown("""
         letter-spacing: -0.02em;
         line-height: 1.2;
         transition: color 0.3s;
+        animation: fadeInUp 0.6s ease-out;
     }
     .metric-label {
         font-family: 'Inter', sans-serif;
@@ -154,7 +147,7 @@ st.markdown("""
         opacity: 0.7;
     }
 
-    /* ----- Header with animated gradient text ----- */
+    /* Header with animated gradient text */
     .fancy-header {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -197,7 +190,7 @@ st.markdown("""
         50% { opacity: 0.8; transform: scaleX(1.01); }
     }
 
-    /* ----- Live indicator with pulsing dot ----- */
+    /* Live indicator with pulsing dot */
     .live-indicator {
         display: inline-flex;
         align-items: center;
@@ -227,7 +220,7 @@ st.markdown("""
         50% { opacity: 0.4; transform: scale(0.8); }
     }
 
-    /* ----- Tabs styling with fade-in animation ----- */
+    /* Tabs with fade-in */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background: rgba(255,255,255,0.2);
@@ -261,7 +254,6 @@ st.markdown("""
         background: rgba(255,255,255,0.08) !important;
         color: #facc15 !important;
     }
-    /* Fade-in for tab content */
     .stTabs [role="tabpanel"] {
         animation: fadeIn 0.5s ease-out;
     }
@@ -270,7 +262,7 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ----- Chart containers with subtle glow ----- */
+    /* Chart containers */
     .chart-container {
         background: rgba(255,255,255,0.3);
         backdrop-filter: blur(8px);
@@ -286,7 +278,7 @@ st.markdown("""
         box-shadow: 0 8px 40px rgba(59, 130, 246, 0.04);
     }
 
-    /* ----- Sidebar styling ----- */
+    /* Sidebar */
     .css-1d391kg, .css-1aumxhk, .stSidebar {
         background: rgba(255,255,255,0.4) !important;
         backdrop-filter: blur(20px) !important;
@@ -298,7 +290,7 @@ st.markdown("""
         border-right: 1px solid rgba(255,255,255,0.03) !important;
     }
 
-    /* ----- Responsive adjustments ----- */
+    /* Responsive */
     @media (max-width: 600px) {
         .fancy-header { font-size: 2.6rem !important; }
         .fancy-sub { font-size: 0.8rem !important; }
@@ -317,7 +309,6 @@ st.markdown("""
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-# --- Header with live indicator ---
 col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
@@ -376,7 +367,7 @@ if df.empty:
 def fmt_currency(value):
     return f"{CURRENCY} {value:,.0f}"
 
-# --- Sidebar (collapsed by default) ---
+# --- Sidebar ---
 st.sidebar.title("🔍 Filters")
 st.sidebar.markdown("---")
 
@@ -437,53 +428,6 @@ if compare_mode and len(date_range_2) == 2:
 else:
     fdf_compare = pd.DataFrame()
 
-# --- Animated metric counters (via HTML + JS) ---
-# We'll pass the values to a small JavaScript that animates from 0 to target.
-# We'll embed it in a markdown block.
-
-# Compute metrics
-rev = fdf['Revenue'].sum()
-profit = fdf['Profit'].sum()
-margin = (profit / rev * 100) if rev > 0 else 0
-orders = len(fdf)
-units = fdf['Quantity'].sum()
-
-# We'll create a div with data attributes and a script to animate.
-# This script will run when the page loads.
-
-st.markdown(f"""
-<script>
-function animateNumber(element, target, duration) {{
-    let start = 0;
-    const step = (timestamp) => {{
-        if (!start) start = timestamp;
-        const progress = Math.min((timestamp - start) / duration, 1);
-        const current = Math.floor(progress * target);
-        element.textContent = current.toLocaleString();
-        if (progress < 1) {{
-            window.requestAnimationFrame(step);
-        }} else {{
-            element.textContent = target.toLocaleString();
-        }}
-    }};
-    window.requestAnimationFrame(step);
-}}
-
-window.addEventListener('load', function() {{
-    const revEl = document.getElementById('metric-revenue');
-    const profitEl = document.getElementById('metric-profit');
-    const marginEl = document.getElementById('metric-margin');
-    const ordersEl = document.getElementById('metric-orders');
-    const unitsEl = document.getElementById('metric-units');
-    if (revEl) animateNumber(revEl, {rev}, 800);
-    if (profitEl) animateNumber(profitEl, {profit}, 800);
-    if (marginEl) {{ marginEl.textContent = '{margin:.1f}%'; }} // no animation for percentage
-    if (ordersEl) animateNumber(ordersEl, {orders}, 800);
-    if (unitsEl) animateNumber(unitsEl, {units}, 800);
-}});
-</script>
-""", unsafe_allow_html=True)
-
 # --- Tabs ---
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "📋 Raw"])
 
@@ -496,7 +440,7 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">💰</span>
-            <div class="metric-value" id="metric-revenue">0</div>
+            <div class="metric-value">{fmt_currency(fdf['Revenue'].sum())}</div>
             <div class="metric-label">Revenue</div>
         </div>
         """, unsafe_allow_html=True)
@@ -504,15 +448,16 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">📈</span>
-            <div class="metric-value" id="metric-profit">0</div>
+            <div class="metric-value">{fmt_currency(fdf['Profit'].sum())}</div>
             <div class="metric-label">Profit</div>
         </div>
         """, unsafe_allow_html=True)
     with col3:
+        margin = (fdf['Profit'].sum() / fdf['Revenue'].sum() * 100) if fdf['Revenue'].sum() > 0 else 0
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">📊</span>
-            <div class="metric-value" id="metric-margin">{margin:.1f}%</div>
+            <div class="metric-value">{margin:.1f}%</div>
             <div class="metric-label">Gross Margin</div>
         </div>
         """, unsafe_allow_html=True)
@@ -520,7 +465,7 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">🧾</span>
-            <div class="metric-value" id="metric-orders">0</div>
+            <div class="metric-value">{len(fdf):,}</div>
             <div class="metric-label">Orders</div>
         </div>
         """, unsafe_allow_html=True)
@@ -528,7 +473,7 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">📦</span>
-            <div class="metric-value" id="metric-units">0</div>
+            <div class="metric-value">{fdf['Quantity'].sum():,}</div>
             <div class="metric-label">Units</div>
         </div>
         """, unsafe_allow_html=True)
