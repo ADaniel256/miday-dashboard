@@ -6,48 +6,26 @@ from datetime import datetime
 st.set_page_config(page_title="MiDAY Live", layout="wide")
 st.title("☕ MiDAY System - Live Dashboard")
 
-# -------------------- DEBUG SECTION (Temporary) --------------------
-st.warning("🔍 DEBUG MODE: Showing raw data loaded from Google Sheets")
-
 FILE_ID = "15_pQ_xaSupdBiMghX5tlkyjciKuGk34J-sRgOdJl9_M"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv"
 
 @st.cache_data(ttl=600)
 def load_data():
     try:
-        # Read CSV without header
-        df_raw = pd.read_csv(SHEET_URL, encoding='utf-8-sig', header=None)
-
-        # Find the header row containing "Date"
-        header_row_idx = None
-        for idx, row in df_raw.iterrows():
-            for cell in row:
-                if isinstance(cell, str) and "date" in cell.lower():
-                    header_row_idx = idx
-                    break
-            if header_row_idx is not None:
-                break
-
-        if header_row_idx is None:
-            st.error("Could not find a row containing 'Date'.")
-            return pd.DataFrame()
-
-        # Set header and drop rows above it
-        df = df_raw.iloc[header_row_idx:].copy()
-        df.columns = df.iloc[0]
-        df = df[1:].reset_index(drop=True)
-
+        # Skip the first row (title), then use the next row as header
+        df = pd.read_csv(SHEET_URL, skiprows=1, encoding='utf-8-sig')
+        
         # Clean column names (strip spaces)
         df.columns = df.columns.str.strip()
+        
+        # Check if we have the expected columns
+        expected = ["Date", "Product ID", "Product Name", "Category", "Quantity", "Unit Price", "Revenue", "Payment Status"]
+        missing = [col for col in expected if col not in df.columns]
+        if missing:
+            st.error(f"Missing columns: {missing}. Found: {list(df.columns)}")
+            return pd.DataFrame()
 
-        # Rename if "Date" is missing
-        if "Date" not in df.columns:
-            possible = [c for c in df.columns if "date" in c.lower()]
-            if possible:
-                df = df.rename(columns={possible[0]: "Date"})
-
-        # Remove empty date rows
-        df = df.dropna(subset=["Date"])
+        # Convert Date
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
@@ -57,20 +35,9 @@ def load_data():
                 df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        if "Quantity" in df.columns:
-            df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
-        else:
-            df["Quantity"] = 0
-
-        if "Category" in df.columns:
-            df["Category"] = df["Category"].fillna("Uncategorized")
-        else:
-            df["Category"] = "Uncategorized"
-
-        if "Payment Status" in df.columns:
-            df["Payment Status"] = df["Payment Status"].fillna("Unknown")
-        else:
-            df["Payment Status"] = "Unknown"
+        df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
+        df["Category"] = df["Category"].fillna("Uncategorized")
+        df["Payment Status"] = df["Payment Status"].fillna("Unknown")
 
         return df
 
@@ -79,24 +46,10 @@ def load_data():
         return pd.DataFrame()
 
 df = load_data()
-
-# ---------- SHOW DEBUG INFO ----------
-st.subheader("📊 Raw Data Debug Info")
-st.write(f"**Total Rows Loaded:** {len(df)}")
-st.write(f"**Column Names Found:** {list(df.columns)}")
-
-if not df.empty:
-    st.write("**First 5 rows of data:**")
-    st.dataframe(df.head(5))
-else:
-    st.error("DataFrame is empty!")
+if df.empty:
     st.stop()
 
-# ---------- Continue to Dashboard (will run if df is not empty) ----------
-st.success("✅ Data loaded successfully! Scroll down for the dashboard.")
-st.divider()
-
-# --- Sidebar filters ---
+# --- Sidebar ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
