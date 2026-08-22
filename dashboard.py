@@ -547,7 +547,7 @@ with tab3:
             transition_duration=700
         )
         fig_race.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = animation_speed
-        fig_race.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = int(animation_speed * 3.0)
+        fig_race.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = int(animation_speed * 30)
         st.plotly_chart(fig_race, use_container_width=True)
     else:
         st.info("Not enough data for the animated race (need multiple months and products).")
