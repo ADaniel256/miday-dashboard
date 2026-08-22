@@ -6,6 +6,9 @@ from datetime import datetime
 st.set_page_config(page_title="MiDAY Live", layout="wide")
 st.title("☕ MiDAY System - Live Dashboard")
 
+# -------------------- DEBUG SECTION (Temporary) --------------------
+st.warning("🔍 DEBUG MODE: Showing raw data loaded from Google Sheets")
+
 FILE_ID = "15_pQ_xaSupdBiMghX5tlkyjciKuGk34J-sRgOdJl9_M"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv"
 
@@ -15,7 +18,7 @@ def load_data():
         # Read CSV without header
         df_raw = pd.read_csv(SHEET_URL, encoding='utf-8-sig', header=None)
 
-        # Find the first row containing "Date" in any cell (case-insensitive)
+        # Find the header row containing "Date"
         header_row_idx = None
         for idx, row in df_raw.iterrows():
             for cell in row:
@@ -26,51 +29,44 @@ def load_data():
                 break
 
         if header_row_idx is None:
-            preview = df_raw.head(10).values.tolist()
-            st.error(f"Could not find a row containing 'Date'. First 10 rows: {preview}")
+            st.error("Could not find a row containing 'Date'.")
             return pd.DataFrame()
 
-        # Use that row as header and skip everything above
+        # Set header and drop rows above it
         df = df_raw.iloc[header_row_idx:].copy()
         df.columns = df.iloc[0]
         df = df[1:].reset_index(drop=True)
 
-        # Clean column names
+        # Clean column names (strip spaces)
         df.columns = df.columns.str.strip()
 
-        # Ensure we have a "Date" column
+        # Rename if "Date" is missing
         if "Date" not in df.columns:
             possible = [c for c in df.columns if "date" in c.lower()]
             if possible:
                 df = df.rename(columns={possible[0]: "Date"})
-            else:
-                st.error(f"No 'Date' column found. Columns: {list(df.columns)}")
-                return pd.DataFrame()
 
-        # Remove rows with missing Date
+        # Remove empty date rows
         df = df.dropna(subset=["Date"])
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
-        # Clean numeric columns (only if they exist)
+        # Clean numeric columns
         for col in ["Unit Price", "Revenue", "COGS"]:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        # Quantity column
         if "Quantity" in df.columns:
             df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
         else:
             df["Quantity"] = 0
 
-        # Category column
         if "Category" in df.columns:
             df["Category"] = df["Category"].fillna("Uncategorized")
         else:
             df["Category"] = "Uncategorized"
 
-        # Payment Status column
         if "Payment Status" in df.columns:
             df["Payment Status"] = df["Payment Status"].fillna("Unknown")
         else:
@@ -79,13 +75,26 @@ def load_data():
         return df
 
     except Exception as e:
-        st.error(f"Error loading data: {e}")
+        st.error(f"Error: {e}")
         return pd.DataFrame()
 
-# Load data
 df = load_data()
-if df.empty:
+
+# ---------- SHOW DEBUG INFO ----------
+st.subheader("📊 Raw Data Debug Info")
+st.write(f"**Total Rows Loaded:** {len(df)}")
+st.write(f"**Column Names Found:** {list(df.columns)}")
+
+if not df.empty:
+    st.write("**First 5 rows of data:**")
+    st.dataframe(df.head(5))
+else:
+    st.error("DataFrame is empty!")
     st.stop()
+
+# ---------- Continue to Dashboard (will run if df is not empty) ----------
+st.success("✅ Data loaded successfully! Scroll down for the dashboard.")
+st.divider()
 
 # --- Sidebar filters ---
 st.sidebar.header("🔍 Filters")
