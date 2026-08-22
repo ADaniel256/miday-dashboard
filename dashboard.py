@@ -14,19 +14,13 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 # ====================================================
-# COFFEE THEME CSS (safe, no complex pseudo-elements)
+# COFFEE THEME CSS (same as before – kept concise)
 # ====================================================
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
-        .stApp {
-            background: linear-gradient(135deg, #1A0E0A 0%, #2C1810 50%, #3E2723 100%);
-        }
-        .metric-card {
-            background: rgba(30,20,15,0.7) !important;
-            border: 1px solid rgba(255,255,255,0.06) !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
-        }
+        .stApp { background: linear-gradient(135deg, #1A0E0A 0%, #2C1810 50%, #3E2723 100%); }
+        .metric-card { background: rgba(30,20,15,0.7) !important; border: 1px solid rgba(255,255,255,0.06) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
         .metric-card:hover { border-color: rgba(200,150,100,0.3) !important; }
         .metric-value { color: #e2e8f0 !important; }
         .metric-label { color: #b8a394 !important; }
@@ -41,13 +35,8 @@ if st.session_state.dark_mode:
 else:
     st.markdown("""
     <style>
-        .stApp {
-            background: linear-gradient(135deg, #F5EBE0 0%, #E8D5C4 50%, #D7CCC8 100%);
-        }
-        .metric-card {
-            background: rgba(255,248,240,0.5);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
-        }
+        .stApp { background: linear-gradient(135deg, #F5EBE0 0%, #E8D5C4 50%, #D7CCC8 100%); }
+        .metric-card { background: rgba(255,248,240,0.5); box-shadow: 0 8px 32px rgba(0,0,0,0.04); }
         .metric-card:hover { border-color: rgba(139,90,43,0.3); }
         .metric-value { color: #2C1810; }
         .metric-label { color: #5D4037; }
@@ -63,7 +52,6 @@ else:
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
-
     .fancy-header {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -104,7 +92,6 @@ st.markdown("""
         0%, 100% { opacity: 0.4; transform: scaleX(1); }
         50% { opacity: 0.8; transform: scaleX(1.01); }
     }
-
     .live-indicator {
         display: inline-flex;
         align-items: center;
@@ -133,7 +120,6 @@ st.markdown("""
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.4; transform: scale(0.8); }
     }
-
     .metric-card {
         border-radius: 24px;
         padding: 24px 16px;
@@ -171,12 +157,7 @@ st.markdown("""
         transform: translateY(-6px) scale(1.02);
         box-shadow: 0 16px 64px rgba(0,0,0,0.06);
     }
-    .metric-icon {
-        font-size: 2.2rem;
-        margin-bottom: 6px;
-        display: block;
-        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.03));
-    }
+    .metric-icon { font-size: 2.2rem; margin-bottom: 6px; display: block; }
     .metric-value {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -199,7 +180,6 @@ st.markdown("""
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
-
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background: rgba(255,248,240,0.2);
@@ -223,14 +203,11 @@ st.markdown("""
         box-shadow: 0 4px 16px rgba(0,0,0,0.02);
         backdrop-filter: blur(8px);
     }
-    .stTabs [role="tabpanel"] {
-        animation: fadeIn 0.5s ease-out;
-    }
+    .stTabs [role="tabpanel"] { animation: fadeIn 0.5s ease-out; }
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
     }
-
     .chart-container {
         backdrop-filter: blur(8px);
         border-radius: 24px;
@@ -244,12 +221,7 @@ st.markdown("""
         border-color: rgba(139,90,43,0.15);
         box-shadow: 0 8px 40px rgba(139,90,43,0.03);
     }
-
-    .stSidebar {
-        backdrop-filter: blur(20px) !important;
-        box-shadow: 4px 0 40px rgba(0,0,0,0.01);
-    }
-
+    .stSidebar { backdrop-filter: blur(20px) !important; box-shadow: 4px 0 40px rgba(0,0,0,0.01); }
     @media (max-width: 600px) {
         .fancy-header { font-size: 2.6rem !important; }
         .fancy-sub { font-size: 0.8rem !important; }
@@ -269,12 +241,10 @@ col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
     <div style="display: flex; align-items: center; flex-wrap: wrap;">
-        <div class="fancy-header">☕ MiDAY Sales System</div>
-        <div class="live-indicator">
-            <span class="live-dot"></span> LIVE
-        </div>
+        <div class="fancy-header">☕ MiDAY System</div>
+        <div class="live-indicator"><span class="live-dot"></span> LIVE</div>
     </div>
-    <div class="fancy-sub">Real‑time Business Intelligence · Powered by MiDAY Investments</div>
+    <div class="fancy-sub">Real‑time Business Intelligence · Powered by Google Sheets</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
@@ -283,12 +253,15 @@ with col_toggle:
         st.session_state.dark_mode = not st.session_state.dark_mode
         st.rerun()
 
-# --- Data Loader ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE THIS
+# ============================================================
+# DATA LOADER – Sales + Expenses
+# ============================================================
+CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"      # <-- REPLACE
+CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=1512430292&single=true&output=csv"      # <-- REPLACE
 
 @st.cache_data(ttl=600)
-def load_data():
-    df = pd.read_csv(CSV_URL)
+def load_sales():
+    df = pd.read_csv(CSV_URL_SALES)
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["Date"], how="all")
     df = df[df["Date"].notna()]
@@ -307,9 +280,48 @@ def load_data():
     df["Margin %"] = (df["Profit"] / df["Revenue"] * 100).round(1).fillna(0)
     return df
 
-df = load_data()
-if df.empty:
+@st.cache_data(ttl=600)
+def load_expenses():
+    df = pd.read_csv(CSV_URL_EXPENSES)
+    df.columns = df.columns.str.strip()
+    df = df.dropna(subset=["Date"], how="all")
+    df = df[df["Date"].notna()]
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"])
+    # Map columns – adjust if your sheet has different names
+    # Typical columns: Date, Expense Type, Category, Description, Amount (UGX)
+    # We'll rename if needed
+    if "Amount (UGX)" in df.columns:
+        df["Amount"] = pd.to_numeric(df["Amount (UGX)"], errors="coerce").fillna(0)
+    elif "Amount" in df.columns:
+        df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
+    else:
+        df["Amount"] = 0
+    df["Expense Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
+    df["Expense Type"] = df.get("Expense Type", "Other").fillna("Other")
+    df["Status"] = df.get("Status", "Unknown").fillna("Unknown")
+    return df
+
+sales_df = load_sales()
+expenses_df = load_expenses()
+
+if sales_df.empty:
+    st.error("Sales data not loaded. Check your CSV URL.")
     st.stop()
+
+# --- Merge sales and expenses by date for aggregated KPIs ---
+# Compute total expenses per day to combine with sales
+expenses_daily = expenses_df.groupby("Date")["Amount"].sum().reset_index()
+expenses_daily.columns = ["Date", "Expenses"]
+
+# Merge with sales data (left join)
+merged = pd.merge(sales_df, expenses_daily, on="Date", how="left")
+merged["Expenses"] = merged["Expenses"].fillna(0)
+
+# Compute Net Profit (Revenue - COGS - Expenses)
+merged["Net Profit"] = merged["Revenue"] - merged["COGS"] - merged["Expenses"]
+
+# We'll use merged for the Overview KPIs and trends, but keep separate for detailed views.
 
 def fmt_currency(v):
     return f"{CURRENCY} {v:,.0f}"
@@ -321,93 +333,63 @@ st.sidebar.markdown("---")
 auto_refresh = st.sidebar.checkbox("🔄 Auto-refresh every 30s")
 animation_speed = st.sidebar.slider("🏁 Bar Race Speed (ms per frame)", 300, 5000, 1500, 100)
 
-min_date = df["Date"].min().date()
-max_date = df["Date"].max().date()
+min_date = sales_df["Date"].min().date()
+max_date = sales_df["Date"].max().date()
 date_range = st.sidebar.date_input("Date Range", [min_date, max_date])
-categories = st.sidebar.multiselect("Category", sorted(df["Category"].unique()), default=sorted(df["Category"].unique()))
-statuses = st.sidebar.multiselect("Payment Status", sorted(df["Payment Status"].unique()), default=sorted(df["Payment Status"].unique()))
-products = st.sidebar.multiselect("Product (optional)", sorted(df["Product Name"].unique()), default=sorted(df["Product Name"].unique()))
+categories = st.sidebar.multiselect("Category", sorted(sales_df["Category"].unique()), default=sorted(sales_df["Category"].unique()))
+statuses = st.sidebar.multiselect("Payment Status", sorted(sales_df["Payment Status"].unique()), default=sorted(sales_df["Payment Status"].unique()))
+products = st.sidebar.multiselect("Product (optional)", sorted(sales_df["Product Name"].unique()), default=sorted(sales_df["Product Name"].unique()))
 
-fdf = df[
-    (df["Date"] >= pd.to_datetime(date_range[0])) &
-    (df["Date"] <= pd.to_datetime(date_range[1])) &
-    (df["Category"].isin(categories)) &
-    (df["Payment Status"].isin(statuses)) &
-    (df["Product Name"].isin(products))
+# Filter sales
+filtered_sales = sales_df[
+    (sales_df["Date"] >= pd.to_datetime(date_range[0])) &
+    (sales_df["Date"] <= pd.to_datetime(date_range[1])) &
+    (sales_df["Category"].isin(categories)) &
+    (sales_df["Payment Status"].isin(statuses)) &
+    (sales_df["Product Name"].isin(products))
 ]
 
-# --- Tabs ---
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "📋 Raw"])
+# Filter expenses to same date range
+filtered_expenses = expenses_df[
+    (expenses_df["Date"] >= pd.to_datetime(date_range[0])) &
+    (expenses_df["Date"] <= pd.to_datetime(date_range[1]))
+]
 
-# ===== TAB 1 =====
+# --- Compute KPIs ---
+total_revenue = filtered_sales["Revenue"].sum()
+total_cogs = filtered_sales["COGS"].sum()
+total_expenses = filtered_expenses["Amount"].sum()
+gross_profit = total_revenue - total_cogs
+net_profit = gross_profit - total_expenses
+margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
+net_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+# --- Tabs (now 5 tabs) ---
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📋 Raw"])
+
+# ===== TAB 1: OVERVIEW =====
 with tab1:
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <span class="metric-icon">💰</span>
-            <div class="metric-value">{fmt_currency(fdf['Revenue'].sum())}</div>
-            <div class="metric-label">Revenue</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <span class="metric-icon">📈</span>
-            <div class="metric-value">{fmt_currency(fdf['Profit'].sum())}</div>
-            <div class="metric-label">Profit</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        margin = (fdf['Profit'].sum() / fdf['Revenue'].sum() * 100) if fdf['Revenue'].sum() > 0 else 0
-        st.markdown(f"""
-        <div class="metric-card">
-            <span class="metric-icon">📊</span>
-            <div class="metric-value">{margin:.1f}%</div>
-            <div class="metric-label">Gross Margin</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col4:
-        st.markdown(f"""
-        <div class="metric-card">
-            <span class="metric-icon">🧾</span>
-            <div class="metric-value">{len(fdf):,}</div>
-            <div class="metric-label">Orders</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col5:
-        st.markdown(f"""
-        <div class="metric-card">
-            <span class="metric-icon">📦</span>
-            <div class="metric-value">{fdf['Quantity'].sum():,}</div>
-            <div class="metric-label">Units</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Timeline slider
-    st.subheader("📅 Timeline Slider")
-    min_ts = fdf['Date'].min()
-    max_ts = fdf['Date'].max()
-    slider_dates = st.slider(
-        "Drag to zoom into a specific period",
-        min_value=min_ts.to_pydatetime(),
-        max_value=max_ts.to_pydatetime(),
-        value=(min_ts.to_pydatetime(), max_ts.to_pydatetime()),
-        format="YYYY-MM-DD"
-    )
-    filtered_slider = fdf[(fdf['Date'] >= pd.to_datetime(slider_dates[0])) & (fdf['Date'] <= pd.to_datetime(slider_dates[1]))]
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1.metric("Revenue", fmt_currency(total_revenue))
+    col2.metric("Gross Profit", fmt_currency(gross_profit))
+    col3.metric("Margin", f"{margin:.1f}%")
+    col4.metric("Expenses", fmt_currency(total_expenses))
+    col5.metric("Net Profit", fmt_currency(net_profit))
+    col6.metric("Net Margin", f"{net_margin:.1f}%")
 
     col1, col2 = st.columns(2)
     with col1:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            daily = filtered_slider.groupby("Date")["Revenue"].sum().reset_index()
-            fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend (slider range)", markers=True,
-                          color_discrete_sequence=["#8B5A2B"])
-            fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
-                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              font=dict(family="Inter, sans-serif"),
-                              transition_duration=500)
+            # Revenue vs Expenses trend
+            daily_rev = filtered_sales.groupby("Date")["Revenue"].sum().reset_index()
+            daily_exp = filtered_expenses.groupby("Date")["Amount"].sum().reset_index()
+            merged_daily = pd.merge(daily_rev, daily_exp, on="Date", how="outer").fillna(0)
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Revenue"], name="Revenue", marker_color="#8B5A2B"))
+            fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Amount"], name="Expenses", marker_color="#D4A373"))
+            fig.update_layout(barmode="group", title="Revenue vs Expenses", height=350,
+                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
             st.plotly_chart(fig, use_container_width=True)
@@ -416,38 +398,27 @@ with tab1:
     with col2:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            cat_sum = fdf.groupby("Category")["Revenue"].sum().sort_values(ascending=False).reset_index()
-            fig = px.pie(cat_sum, names="Category", values="Revenue", hole=0.4,
-                         title="Revenue by Category", color_discrete_sequence=px.colors.qualitative.Set2)
-            fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                              transition_duration=500)
-            st.plotly_chart(fig, use_container_width=True)
+            # Expense breakdown by category
+            exp_cat = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index()
+            if not exp_cat.empty:
+                fig = px.pie(exp_cat, names="Expense Category", values="Amount", hole=0.4,
+                             title="Expense Breakdown", color_discrete_sequence=px.colors.qualitative.Set2)
+                fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No expense data for this period.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-    with st.container():
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        cumulative = fdf.sort_values("Date")
-        cumulative["Cumulative Revenue"] = cumulative["Revenue"].cumsum()
-        fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue Over Time",
-                      color_discrete_sequence=["#D4A373"])
-        fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
-                          plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                          transition_duration=500)
-        fig.update_xaxes(showgrid=False)
-        fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# ===== TAB 2 =====
+# ===== TAB 2: PRODUCTS (unchanged from before) =====
 with tab2:
     st.subheader("📦 Product Performance")
-    prod = fdf.groupby("Product Name").agg({"Revenue": "sum", "Profit": "sum", "Quantity": "sum"}).reset_index()
+    prod = filtered_sales.groupby("Product Name").agg({"Revenue": "sum", "Profit": "sum", "Quantity": "sum"}).reset_index()
     prod["Margin %"] = (prod["Profit"] / prod["Revenue"] * 100).round(1).fillna(0)
     prod = prod.sort_values("Revenue", ascending=False)
 
     fig = go.Figure()
     fig.add_trace(go.Bar(x=prod["Product Name"], y=prod["Revenue"], name="Revenue", marker_color="#8B5A2B"))
-    fig.add_trace(go.Bar(x=prod["Product Name"], y=prod["Profit"], name="Profit", marker_color="#D4A373"))
+    fig.add_trace(go.Bar(x=prod["Product Name"], y=prod["Profit"], name="Gross Profit", marker_color="#D4A373"))
     fig.add_trace(go.Scatter(x=prod["Product Name"], y=prod["Margin %"], name="Margin %", mode="lines+markers",
                              yaxis="y2", line=dict(color="#F1C40F", width=3), marker=dict(size=10)))
     fig.update_layout(
@@ -473,9 +444,9 @@ with tab2:
 
     st.download_button("⬇️ Download Product Report (CSV)", prod.to_csv(index=False), file_name="product_performance.csv")
 
-# ===== TAB 3 =====
+# ===== TAB 3: TRENDS (Sales) =====
 with tab3:
-    st.subheader("📅 Trends and Breakdowns")
+    st.subheader("📅 Sales Trends and Breakdowns")
     gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], horizontal=True)
 
     def agg_period(df, period):
@@ -495,11 +466,11 @@ with tab3:
         agg["Margin %"] = (agg["Profit"] / agg["Revenue"] * 100).round(1).fillna(0)
         return agg
 
-    agg_df = agg_period(fdf, gran)
+    agg_df = agg_period(filtered_sales, gran)
 
     fig = go.Figure()
     fig.add_trace(go.Bar(x=agg_df["Period"], y=agg_df["Revenue"], name="Revenue", marker_color="#8B5A2B"))
-    fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Profit"], name="Profit", mode="lines+markers",
+    fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Profit"], name="Gross Profit", mode="lines+markers",
                              line=dict(color="#D4A373", width=3), marker=dict(size=8), yaxis="y2"))
     fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Margin %"], name="Margin %", mode="lines+markers",
                              line=dict(color="#F1C40F", width=2, dash="dash"), marker=dict(size=6), yaxis="y2"))
@@ -515,11 +486,11 @@ with tab3:
     fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Animated bar race
+    # Animated bar race (sales)
     st.subheader("🏁 Animated Bar Race (Monthly Product Revenue)")
     st.caption(f"Current speed: {animation_speed} ms per frame (adjust in sidebar)")
 
-    fdf_month = fdf.copy()
+    fdf_month = filtered_sales.copy()
     fdf_month["Month"] = fdf_month["Date"].dt.to_period("M").astype(str)
     race_data = fdf_month.groupby(["Month", "Product Name"])["Revenue"].sum().reset_index()
 
@@ -547,7 +518,7 @@ with tab3:
             transition_duration=700
         )
         fig_race.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = animation_speed
-        fig_race.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = int(animation_speed * 3.0)
+        fig_race.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = int(animation_speed * 0.6)
         st.plotly_chart(fig_race, use_container_width=True)
     else:
         st.info("Not enough data for the animated race (need multiple months and products).")
@@ -561,12 +532,59 @@ with tab3:
     st.dataframe(display, use_container_width=True)
     st.download_button("⬇️ Download Breakdown CSV", agg_df.to_csv(index=False), file_name=f"miday_{gran.lower()}_breakdown.csv")
 
-# ===== TAB 4 =====
+# ===== TAB 4: EXPENSES =====
 with tab4:
-    st.subheader("📋 Transaction Details")
+    st.subheader("🧾 Expense Analysis")
+    col1, col2 = st.columns(2)
+    with col1:
+        with st.container():
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            exp_trend = filtered_expenses.groupby("Date")["Amount"].sum().reset_index()
+            if not exp_trend.empty:
+                fig = px.line(exp_trend, x="Date", y="Amount", title="Expense Trend", markers=True,
+                              color_discrete_sequence=["#D4A373"])
+                fig.update_layout(yaxis_title=CURRENCY, height=350,
+                                  plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                fig.update_xaxes(showgrid=False)
+                fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No expense data for this period.")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        with st.container():
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            exp_cat = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
+            if not exp_cat.empty:
+                fig = px.bar(exp_cat, x="Expense Category", y="Amount", title="Expense by Category",
+                             color_discrete_sequence=["#8B5A2B"])
+                fig.update_layout(yaxis_title=CURRENCY, height=350,
+                                  plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                fig.update_xaxes(showgrid=False)
+                fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No expense data.")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # Detailed expense table
+    with st.expander("📋 Detailed Expense Transactions"):
+        if not filtered_expenses.empty:
+            st.dataframe(filtered_expenses[["Date", "Expense Category", "Expense Type", "Description", "Amount", "Status"]]
+                         .style.format({"Amount": fmt_currency}), use_container_width=True)
+        else:
+            st.info("No expenses in this period.")
+
+    # Download expenses
+    st.download_button("⬇️ Download Expenses CSV", filtered_expenses.to_csv(index=False), file_name="expenses.csv")
+
+# ===== TAB 5: RAW DATA (Sales) =====
+with tab5:
+    st.subheader("📋 Sales Transaction Details")
     st.dataframe(
-        fdf[["Date", "Product Name", "Category", "Quantity", "Unit Price",
-             "Revenue", "COGS", "Profit", "Margin %", "Payment Status", "Notes"]]
+        filtered_sales[["Date", "Product Name", "Category", "Quantity", "Unit Price",
+                        "Revenue", "COGS", "Profit", "Margin %", "Payment Status", "Notes"]]
         .style.format({
             "Unit Price": fmt_currency,
             "Revenue": fmt_currency,
@@ -581,14 +599,14 @@ with tab4:
 
     col1, col2 = st.columns(2)
     with col1:
-        csv = fdf.to_csv(index=False)
-        st.download_button("⬇️ Download as CSV", data=csv, file_name="miday_sales_data.csv", mime="text/csv")
+        csv = filtered_sales.to_csv(index=False)
+        st.download_button("⬇️ Download Sales CSV", data=csv, file_name="miday_sales_data.csv", mime="text/csv")
     with col2:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            fdf.to_excel(writer, index=False, sheet_name='Sales')
+            filtered_sales.to_excel(writer, index=False, sheet_name='Sales')
         st.download_button(
-            label="⬇️ Download as Excel",
+            label="⬇️ Download Sales Excel",
             data=output.getvalue(),
             file_name="miday_sales_data.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
