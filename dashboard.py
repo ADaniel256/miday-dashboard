@@ -12,16 +12,16 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv
 @st.cache_data(ttl=600)
 def load_data():
     try:
-        df = pd.read_csv(SHEET_URL, skip_blank_lines=True)
+        # 🔥 FIXED: Added encoding='utf-8-sig' to remove invisible BOM characters
+        df = pd.read_csv(SHEET_URL, skip_blank_lines=True, encoding='utf-8-sig')
         df.columns = df.columns.str.strip()  # remove leading/trailing spaces
 
-        # Find a date column if "Date" isn't there
         if "Date" not in df.columns:
-            possible_dates = [c for c in df.columns if "date" in c.lower()]
-            if possible_dates:
-                df = df.rename(columns={possible_dates[0]: "Date"})
+            possible = [c for c in df.columns if "date" in c.lower()]
+            if possible:
+                df = df.rename(columns={possible[0]: "Date"})
             else:
-                st.error(f"No date column found. Columns: {list(df.columns)}")
+                st.error(f"No date column. Found: {list(df.columns)}")
                 return pd.DataFrame()
 
         df = df.dropna(subset=["Date"], how="all")
@@ -39,7 +39,7 @@ def load_data():
         df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}")
+        st.error(f"Error: {e}")
         return pd.DataFrame()
 
 df = load_data()
