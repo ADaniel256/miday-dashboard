@@ -6,9 +6,7 @@ from datetime import datetime, timedelta
 import io
 import time
 
-# ============================================================
 CURRENCY = "UGX"
-# ============================================================
 
 st.set_page_config(
     page_title="MiDAY Insights",
@@ -17,43 +15,86 @@ st.set_page_config(
     page_icon="☕"
 )
 
-# --- Dark mode state ---
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-# --- Safe CSS (conditionally applied) ---
+# ===== DARK MODE CSS (coffee palette) =====
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
-        .stApp { background: #0a0f1a; }
-        .metric-card { background: rgba(20,30,50,0.7) !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important; }
-        .metric-card:hover { border-color: rgba(59,130,246,0.4) !important; }
+        .stApp {
+            background: linear-gradient(135deg, #1A0E0A 0%, #2C1810 40%, #3E2723 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .stApp::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 40%, rgba(200,150,100,0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(160,120,80,0.04) 0%, transparent 50%);
+            animation: steamWave 20s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes steamWave {
+            0% { transform: translate(0,0) rotate(0deg) scale(1); }
+            100% { transform: translate(-3%,-5%) rotate(4deg) scale(1.02); }
+        }
+        .metric-card { background: rgba(30,20,15,0.7) !important; border: 1px solid rgba(255,255,255,0.06) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
+        .metric-card:hover { border-color: rgba(200,150,100,0.3) !important; }
         .metric-value { color: #e2e8f0 !important; }
-        .metric-label { color: #94a3b8 !important; }
-        .fancy-sub { color: #94a3b8 !important; }
-        .stTabs [data-baseweb="tab"] { color: #94a3b8 !important; }
+        .metric-label { color: #b8a394 !important; }
+        .fancy-sub { color: #b8a394 !important; }
+        .stTabs [data-baseweb="tab"] { color: #b8a394 !important; }
         .stTabs [aria-selected="true"] { color: #facc15 !important; border-bottom-color: #facc15 !important; }
-        .chart-container { background: rgba(20,30,50,0.3) !important; border-color: rgba(255,255,255,0.05) !important; }
-        .stSidebar { background: rgba(10,15,26,0.7) !important; border-right: 1px solid rgba(255,255,255,0.03) !important; }
+        .chart-container { background: rgba(30,20,15,0.4) !important; border-color: rgba(255,255,255,0.04) !important; }
+        .stSidebar { background: rgba(20,10,8,0.8) !important; border-right: 1px solid rgba(255,255,255,0.03) !important; }
     </style>
     """, unsafe_allow_html=True)
 else:
+    # ===== LIGHT MODE CSS (coffee palette) =====
     st.markdown("""
     <style>
-        .stApp { background: #f5f7fa; }
-        .metric-card { background: rgba(255,255,255,0.5); box-shadow: 0 8px 32px rgba(0,0,0,0.04); }
-        .metric-card:hover { border-color: rgba(59,130,246,0.3); }
-        .metric-value { color: #0f172a; }
-        .metric-label { color: #475569; }
-        .fancy-sub { color: #64748b; }
-        .stTabs [data-baseweb="tab"] { color: #475569; }
-        .stTabs [aria-selected="true"] { color: #0f172a; border-bottom-color: #3b82f6; }
-        .chart-container { background: rgba(255,255,255,0.3); border-color: rgba(255,255,255,0.15); }
-        .stSidebar { background: rgba(255,255,255,0.4) !important; border-right: 1px solid rgba(255,255,255,0.1) !important; }
+        .stApp {
+            background: linear-gradient(135deg, #F5EBE0 0%, #E8D5C4 40%, #D7CCC8 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .stApp::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 40%, rgba(139,90,43,0.05) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(200,150,100,0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 50% 20%, rgba(210,180,140,0.04) 0%, transparent 40%);
+            animation: steamWave 20s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes steamWave {
+            0% { transform: translate(0,0) rotate(0deg) scale(1); }
+            100% { transform: translate(-3%,-5%) rotate(4deg) scale(1.02); }
+        }
+        .metric-card { background: rgba(255,248,240,0.5); box-shadow: 0 8px 32px rgba(0,0,0,0.04); }
+        .metric-card:hover { border-color: rgba(139,90,43,0.3); }
+        .metric-value { color: #2C1810; }
+        .metric-label { color: #5D4037; }
+        .fancy-sub { color: #5D4037; }
+        .stTabs [data-baseweb="tab"] { color: #5D4037; }
+        .stTabs [aria-selected="true"] { color: #2C1810; border-bottom-color: #8B5A2B; }
+        .chart-container { background: rgba(255,248,240,0.3); border-color: rgba(139,90,43,0.10); }
+        .stSidebar { background: rgba(255,248,240,0.5) !important; border-right: 1px solid rgba(139,90,43,0.05) !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- Global CSS (animations, glass, fonts) ---
+# ===== Shared CSS (fonts, animations, glass, responsive) =====
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
@@ -62,7 +103,7 @@ st.markdown("""
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
         font-size: 4rem;
-        background: linear-gradient(135deg, #0f172a 0%, #3b82f6 40%, #10b981 100%);
+        background: linear-gradient(135deg, #2C1810 0%, #8B5A2B 40%, #D4A373 100%);
         background-size: 200% 200%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -80,13 +121,13 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
         font-weight: 300;
         font-size: 1.1rem;
-        color: #64748b;
+        color: #5D4037;
         letter-spacing: 0.2em;
         margin-top: 4px;
     }
     .fancy-divider {
         height: 3px;
-        background: linear-gradient(90deg, #3b82f6, #10b981, #facc15);
+        background: linear-gradient(90deg, #8B5A2B, #D4A373, #F5EBE0);
         border-radius: 10px;
         margin-top: 8px;
         margin-bottom: 28px;
@@ -106,11 +147,11 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
         font-size: 0.8rem;
         font-weight: 600;
-        color: #10b981;
-        background: rgba(16,185,129,0.1);
+        color: #8B5A2B;
+        background: rgba(139,90,43,0.10);
         padding: 4px 16px 4px 12px;
         border-radius: 30px;
-        border: 1px solid rgba(16,185,129,0.2);
+        border: 1px solid rgba(139,90,43,0.15);
         backdrop-filter: blur(4px);
         margin-left: 12px;
     }
@@ -119,21 +160,22 @@ st.markdown("""
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #10b981;
+        background: #8B5A2B;
         animation: pulseDot 1.5s ease-in-out infinite;
-        box-shadow: 0 0 12px rgba(16,185,129,0.4);
+        box-shadow: 0 0 12px rgba(139,90,43,0.3);
     }
     @keyframes pulseDot {
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.4; transform: scale(0.8); }
     }
 
+    /* --- Glass-morphism metric cards --- */
     .metric-card {
         border-radius: 24px;
         padding: 24px 16px;
         text-align: center;
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.2);
+        border: 1px solid rgba(139,90,43,0.10);
         transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
         margin: 8px 0;
         position: relative;
@@ -147,7 +189,7 @@ st.markdown("""
         left: -100%;
         width: 300%;
         height: 300%;
-        background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.2) 0%, transparent 70%);
+        background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.15) 0%, transparent 70%);
         opacity: 0;
         transition: opacity 0.6s;
         pointer-events: none;
@@ -163,13 +205,13 @@ st.markdown("""
     }
     .metric-card:hover {
         transform: translateY(-6px) scale(1.02);
-        box-shadow: 0 16px 64px rgba(0,0,0,0.08);
+        box-shadow: 0 16px 64px rgba(0,0,0,0.06);
     }
     .metric-icon {
         font-size: 2.2rem;
         margin-bottom: 6px;
         display: block;
-        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.05));
+        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.03));
     }
     .metric-value {
         font-family: 'Space Grotesk', sans-serif;
@@ -196,11 +238,11 @@ st.markdown("""
 
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
-        background: rgba(255,255,255,0.2);
+        background: rgba(255,248,240,0.2);
         backdrop-filter: blur(12px);
         border-radius: 20px;
         padding: 6px;
-        border: 1px solid rgba(255,255,255,0.15);
+        border: 1px solid rgba(139,90,43,0.08);
     }
     .stTabs [data-baseweb="tab"] {
         font-family: 'Inter', sans-serif;
@@ -212,9 +254,9 @@ st.markdown("""
         background: transparent !important;
     }
     .stTabs [aria-selected="true"] {
-        background: rgba(255,255,255,0.5) !important;
+        background: rgba(255,248,240,0.4) !important;
         font-weight: 600;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.02);
         backdrop-filter: blur(8px);
     }
     .stTabs [role="tabpanel"] {
@@ -229,19 +271,19 @@ st.markdown("""
         backdrop-filter: blur(8px);
         border-radius: 24px;
         padding: 20px;
-        border: 1px solid rgba(255,255,255,0.15);
+        border: 1px solid rgba(139,90,43,0.06);
         margin-bottom: 20px;
         transition: all 0.3s;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.01);
     }
     .chart-container:hover {
-        border-color: rgba(59,130,246,0.2);
-        box-shadow: 0 8px 40px rgba(59,130,246,0.04);
+        border-color: rgba(139,90,43,0.15);
+        box-shadow: 0 8px 40px rgba(139,90,43,0.03);
     }
 
     .stSidebar {
         backdrop-filter: blur(20px) !important;
-        box-shadow: 4px 0 40px rgba(0,0,0,0.02);
+        box-shadow: 4px 0 40px rgba(0,0,0,0.01);
     }
 
     @media (max-width: 600px) {
@@ -278,7 +320,7 @@ with col_toggle:
         st.rerun()
 
 # --- Data Loader ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE WITH YOUR GOOGLE SHEETS CSV LINK
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE
 
 @st.cache_data(ttl=600)
 def load_data():
@@ -318,55 +360,27 @@ def fmt_currency(value):
 st.sidebar.title("🔍 Filters")
 st.sidebar.markdown("---")
 
-# Auto‑refresh toggle
 auto_refresh = st.sidebar.checkbox("🔄 Auto‑refresh every 30s")
-
-# ⭐ SPEED SLIDER – this controls the animation speed of the bar race
 animation_speed = st.sidebar.slider(
     "🏁 Bar Race Speed (ms per frame)",
     min_value=300,
     max_value=5000,
     value=1500,
-    step=100,
-    help="Lower = faster, Higher = slower"
+    step=100
 )
 
 min_date = df["Date"].min().date()
 max_date = df["Date"].max().date()
-date_range = st.sidebar.date_input(
-    "Date Range",
-    [min_date, max_date],
-    min_value=min_date,
-    max_value=max_date
-)
+date_range = st.sidebar.date_input("Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
 
-categories = st.sidebar.multiselect(
-    "Category",
-    options=sorted(df["Category"].unique()),
-    default=sorted(df["Category"].unique())
-)
-
-statuses = st.sidebar.multiselect(
-    "Payment Status",
-    options=sorted(df["Payment Status"].unique()),
-    default=sorted(df["Payment Status"].unique())
-)
-
+categories = st.sidebar.multiselect("Category", options=sorted(df["Category"].unique()), default=sorted(df["Category"].unique()))
+statuses = st.sidebar.multiselect("Payment Status", options=sorted(df["Payment Status"].unique()), default=sorted(df["Payment Status"].unique()))
 all_products = sorted(df["Product Name"].unique())
-selected_products = st.sidebar.multiselect(
-    "Product (optional)",
-    options=all_products,
-    default=all_products
-)
+selected_products = st.sidebar.multiselect("Product (optional)", options=all_products, default=all_products)
 
 compare_mode = st.sidebar.checkbox("📊 Compare two periods")
 if compare_mode:
-    date_range_2 = st.sidebar.date_input(
-        "Comparison Date Range",
-        [min_date, min_date + timedelta(days=7)],
-        min_value=min_date,
-        max_value=max_date
-    )
+    date_range_2 = st.sidebar.date_input("Comparison Date Range", [min_date, min_date + timedelta(days=7)], min_value=min_date, max_value=max_date)
 
 # --- Apply filters ---
 fdf = df[
@@ -391,7 +405,7 @@ else:
 # --- Tabs ---
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "📋 Raw"])
 
-# ===================== TAB 1: OVERVIEW =====================
+# ===== TAB 1 =====
 with tab1:
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
@@ -444,7 +458,6 @@ with tab1:
         col1.metric("Revenue Change", fmt_currency(delta_rev))
         col2.metric("Profit Change", fmt_currency(delta_profit))
 
-    # ---- Time slider for trend chart ----
     st.subheader("📅 Timeline Slider")
     min_ts = fdf['Date'].min()
     max_ts = fdf['Date'].max()
@@ -463,13 +476,13 @@ with tab1:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             daily = filtered_slider.groupby("Date")["Revenue"].sum().reset_index()
             fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend (slider range)", markers=True,
-                          color_discrete_sequence=["#3b82f6"])
+                          color_discrete_sequence=["#8B5A2B"])
             fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                               font=dict(family="Inter, sans-serif"),
                               transition_duration=500)
             fig.update_xaxes(showgrid=False)
-            fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+            fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
             st.plotly_chart(fig, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -489,16 +502,16 @@ with tab1:
         cumulative = fdf.sort_values("Date")
         cumulative["Cumulative Revenue"] = cumulative["Revenue"].cumsum()
         fig = px.area(cumulative, x="Date", y="Cumulative Revenue", title="Cumulative Revenue Over Time",
-                      color_discrete_sequence=["#10b981"])
+                      color_discrete_sequence=["#D4A373"])
         fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
                           plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                           transition_duration=500)
         fig.update_xaxes(showgrid=False)
-        fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+        fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ===================== TAB 2: PRODUCTS =====================
+# ===== TAB 2 =====
 with tab2:
     st.subheader("📦 Product Performance")
     prod_perf = fdf.groupby("Product Name").agg({
@@ -514,13 +527,13 @@ with tab2:
         x=prod_perf["Product Name"],
         y=prod_perf["Revenue"],
         name="Revenue",
-        marker_color="#FF6B6B"
+        marker_color="#8B5A2B"
     ))
     fig.add_trace(go.Bar(
         x=prod_perf["Product Name"],
         y=prod_perf["Profit"],
         name="Profit",
-        marker_color="#2ECC71"
+        marker_color="#D4A373"
     ))
     fig.add_trace(go.Scatter(
         x=prod_perf["Product Name"],
@@ -543,7 +556,7 @@ with tab2:
         transition_duration=500
     )
     fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+    fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
     st.plotly_chart(fig, use_container_width=True)
 
     with st.expander("📋 Detailed Product Data"):
@@ -561,7 +574,7 @@ with tab2:
         mime="text/csv"
     )
 
-# ===================== TAB 3: TRENDS =====================
+# ===== TAB 3 =====
 with tab3:
     st.subheader("📅 Trends and Breakdowns")
     gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], horizontal=True)
@@ -586,9 +599,9 @@ with tab3:
     agg_df = agg_period(fdf, gran)
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=agg_df["Period"], y=agg_df["Revenue"], name="Revenue", marker_color="#FF6B6B"))
+    fig.add_trace(go.Bar(x=agg_df["Period"], y=agg_df["Revenue"], name="Revenue", marker_color="#8B5A2B"))
     fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Profit"], name="Profit", mode="lines+markers",
-                             line=dict(color="#2ECC71", width=3), marker=dict(size=8), yaxis="y2"))
+                             line=dict(color="#D4A373", width=3), marker=dict(size=8), yaxis="y2"))
     fig.add_trace(go.Scatter(x=agg_df["Period"], y=agg_df["Margin %"], name="Margin %", mode="lines+markers",
                              line=dict(color="#F1C40F", width=2, dash="dash"), marker=dict(size=6), yaxis="y2"))
     fig.update_layout(
@@ -602,10 +615,9 @@ with tab3:
         transition_duration=500
     )
     fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+    fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ---- ANIMATED BAR RACE with speed slider ----
     st.subheader("🏁 Animated Bar Race (Monthly Product Revenue)")
     st.caption(f"Current speed: {animation_speed} ms per frame (adjust in sidebar)")
 
@@ -636,8 +648,6 @@ with tab3:
             paper_bgcolor="rgba(0,0,0,0)",
             transition_duration=700
         )
-
-        # Apply the speed from sidebar slider
         fig_race.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = animation_speed
         fig_race.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = int(animation_speed * 0.6)
 
@@ -660,7 +670,7 @@ with tab3:
         mime="text/csv"
     )
 
-# ===================== TAB 4: RAW DATA =====================
+# ===== TAB 4 =====
 with tab4:
     st.subheader("📋 Transaction Details")
     st.dataframe(
@@ -681,12 +691,7 @@ with tab4:
     col1, col2 = st.columns(2)
     with col1:
         csv = fdf.to_csv(index=False)
-        st.download_button(
-            label="⬇️ Download as CSV",
-            data=csv,
-            file_name="miday_sales_data.csv",
-            mime="text/csv"
-        )
+        st.download_button(label="⬇️ Download as CSV", data=csv, file_name="miday_sales_data.csv", mime="text/csv")
     with col2:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -698,7 +703,7 @@ with tab4:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-# --- Auto‑refresh logic ---
+# --- Auto‑refresh ---
 if auto_refresh:
     st.sidebar.info("🔄 Auto‑refresh is ON – updating every 30 seconds")
     time.sleep(30)
