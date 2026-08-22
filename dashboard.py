@@ -12,10 +12,11 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv
 @st.cache_data(ttl=600)
 def load_data():
     try:
-        # 🔥 FIXED: Added encoding='utf-8-sig' to remove invisible BOM characters
-        df = pd.read_csv(SHEET_URL, skip_blank_lines=True, encoding='utf-8-sig')
-        df.columns = df.columns.str.strip()  # remove leading/trailing spaces
+        # 🔥 FIX: skiprows=1 removes the title row (row 0)
+        df = pd.read_csv(SHEET_URL, skiprows=1, encoding='utf-8-sig')
+        df.columns = df.columns.str.strip()  # clean column names
 
+        # If still no "Date" column, fallback to searching
         if "Date" not in df.columns:
             possible = [c for c in df.columns if "date" in c.lower()]
             if possible:
@@ -24,11 +25,13 @@ def load_data():
                 st.error(f"No date column. Found: {list(df.columns)}")
                 return pd.DataFrame()
 
+        # Remove rows where Date is missing
         df = df.dropna(subset=["Date"], how="all")
         df = df[df["Date"].notna()]
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
+        # Clean numbers
         for col in ["Unit Price", "Revenue", "COGS"]:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
@@ -46,7 +49,7 @@ df = load_data()
 if df.empty:
     st.stop()
 
-# --- Sidebar ---
+# --- Sidebar filters ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
