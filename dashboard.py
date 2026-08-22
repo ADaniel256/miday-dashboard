@@ -12,44 +12,82 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=csv
 @st.cache_data(ttl=600)
 def load_data():
     try:
-        # Skip the first row (title), then use the next row as header
-        df = pd.read_csv(SHEET_URL, skiprows=1, encoding='utf-8-sig')
-        
-        # Clean column names (strip spaces)
-        df.columns = df.columns.str.strip()
-        
-        # Check if we have the expected columns
-        expected = ["Date", "Product ID", "Product Name", "Category", "Quantity", "Unit Price", "Revenue", "Payment Status"]
-        missing = [col for col in expected if col not in df.columns]
-        if missing:
-            st.error(f"Missing columns: {missing}. Found: {list(df.columns)}")
+        # Read CSV without any header assumption
+        raw = pd.read_csv(SHEET_URL, encoding='utf-8-sig', header=None)
+
+        # Scan each row to find one that contains ALL required header keywords
+        required_keywords = ["date", "product name", "revenue", "payment status"]
+        header_row_idx = None
+
+        for idx, row in raw.iterrows():
+            # Convert all cells in the row to lowercase strings
+            cells_lower = [str(cell).strip().lower() for cell in row if pd.notna(cell)]
+            # Check if ALL keywords are present in any cell of this row
+            found_all = True
+            for keyword in required_keywords:
+                if not any(keyword in cell for cell in cells_lower):
+                    found_all = False
+                    break
+            if found_all:
+                header_row_idx = idx
+                break
+
+        if header_row_idx is None:
+            st.error("Could not find the data header row (Date, Product Name, Revenue, Payment Status).")
+            st.write("First 10 rows of the raw CSV:")
+            st.dataframe(raw.head(10))
             return pd.DataFrame()
 
-        # Convert Date
+        # Now use that row as header, and take all rows below
+        df = raw.iloc[header_row_idx:].copy()
+        df.columns = df.iloc[0]
+        df = df[1:].reset_index(drop=True)
+
+        # Strip spaces from column names
+        df.columns = df.columns.str.strip()
+
+        # Ensure "Date" exists
+        if "Date" not in df.columns:
+            st.error(f"No 'Date' column found. Columns: {list(df.columns)}")
+            return pd.DataFrame()
+
+        # Convert date
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
 
-        # Clean numeric columns
+        # Clean numbers
         for col in ["Unit Price", "Revenue", "COGS"]:
             if col in df.columns:
                 df[col] = df[col].astype(str).str.replace(",", "").str.replace("#N/A", "")
                 df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
-        df["Category"] = df["Category"].fillna("Uncategorized")
-        df["Payment Status"] = df["Payment Status"].fillna("Unknown")
+        if "Quantity" in df.columns:
+            df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
+        else:
+            df["Quantity"] = 0
+
+        if "Category" in df.columns:
+            df["Category"] = df["Category"].fillna("Uncategorized")
+        else:
+            df["Category"] = "Uncategorized"
+
+        if "Payment Status" in df.columns:
+            df["Payment Status"] = df["Payment Status"].fillna("Unknown")
+        else:
+            df["Payment Status"] = "Unknown"
 
         return df
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
+# --- Load and display ---
 df = load_data()
 if df.empty:
     st.stop()
 
-# --- Sidebar ---
+# --- Sidebar filters ---
 st.sidebar.header("🔍 Filters")
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
