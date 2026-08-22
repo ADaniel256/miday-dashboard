@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
+import time
 
 # =====================================================
 # 🌍 Currency setting
@@ -17,26 +18,57 @@ st.set_page_config(
     page_icon="☕"
 )
 
-# --- Silicon Valley Grade CSS ---
+# --- Advanced CSS with motion and animations ---
 st.markdown("""
 <style>
+    /* ----- Google Fonts ----- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
 
+    /* ----- Reset & Global ----- */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    /* ----- Animated gradient background (moving waves) ----- */
     .stApp {
         background: linear-gradient(135deg, #f5f7fa 0%, #e9edf5 100%);
-        transition: background 0.3s ease;
+        transition: background 0.5s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    .stApp::before {
+        content: '';
+        position: fixed;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 60%),
+                    radial-gradient(circle at 70% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 60%);
+        animation: wave 15s ease-in-out infinite alternate;
+        pointer-events: none;
+        z-index: 0;
+    }
+    @keyframes wave {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        100% { transform: translate(-5%, -5%) rotate(3deg); }
+    }
+    .dark-mode .stApp::before {
+        background: radial-gradient(circle at 30% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 60%),
+                    radial-gradient(circle at 70% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 60%);
     }
 
+    /* ----- Dark mode overrides ----- */
     .dark-mode .stApp {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        background: linear-gradient(135deg, #0a0f1a 0%, #1a2332 100%);
     }
     .dark-mode .metric-card {
-        background: rgba(30, 41, 59, 0.7) !important;
+        background: rgba(20, 30, 50, 0.6) !important;
         backdrop-filter: blur(12px) !important;
         border: 1px solid rgba(255,255,255,0.08) !important;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+    }
+    .dark-mode .metric-card:hover {
+        border-color: rgba(59, 130, 246, 0.4) !important;
+        box-shadow: 0 12px 48px rgba(59, 130, 246, 0.15) !important;
     }
     .dark-mode .metric-value { color: #e2e8f0 !important; }
     .dark-mode .metric-label { color: #94a3b8 !important; }
@@ -47,79 +79,107 @@ st.markdown("""
         border-bottom-color: #facc15 !important;
     }
     .dark-mode .chart-container {
-        background: rgba(30, 41, 59, 0.3) !important;
+        background: rgba(20, 30, 50, 0.4) !important;
         border-color: rgba(255,255,255,0.05) !important;
     }
+    .dark-mode .stSidebar {
+        background: rgba(10, 15, 26, 0.8) !important;
+        border-right: 1px solid rgba(255,255,255,0.05) !important;
+    }
 
+    /* ----- Glass-morphism metric cards with shimmer ----- */
     .metric-card {
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 20px;
-        padding: 20px 12px;
+        background: rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 24px;
+        padding: 24px 16px;
         text-align: center;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        margin: 6px 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        margin: 8px 0;
         position: relative;
         overflow: hidden;
+        transform: translateY(0);
     }
     .metric-card::before {
         content: '';
         position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        top: -100%;
+        left: -100%;
+        width: 300%;
+        height: 300%;
+        background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.3) 0%, transparent 70%);
         opacity: 0;
         transition: opacity 0.6s;
         pointer-events: none;
     }
-    .metric-card:hover::before { opacity: 1; }
-    .metric-card:hover {
-        transform: translateY(-4px) scale(1.02);
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
-        border-color: rgba(255, 255, 255, 0.6);
+    .metric-card:hover::before {
+        opacity: 1;
+        animation: shimmer 0.6s ease-out;
     }
-    .metric-icon { font-size: 2rem; margin-bottom: 4px; display: block; }
+    @keyframes shimmer {
+        0% { transform: translate(-30%, -30%) scale(0.5); opacity: 0; }
+        50% { opacity: 0.5; }
+        100% { transform: translate(30%, 30%) scale(1.2); opacity: 0; }
+    }
+    .metric-card:hover {
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 16px 64px rgba(0, 0, 0, 0.08);
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+    .metric-icon {
+        font-size: 2.2rem;
+        margin-bottom: 6px;
+        display: block;
+        filter: drop-shadow(0 2px 8px rgba(0,0,0,0.05));
+    }
     .metric-value {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
-        font-size: 2.2rem;
+        font-size: 2.4rem;
         color: #0f172a;
         letter-spacing: -0.02em;
         line-height: 1.2;
+        transition: color 0.3s;
     }
     .metric-label {
         font-family: 'Inter', sans-serif;
-        font-weight: 400;
-        font-size: 0.85rem;
+        font-weight: 500;
+        font-size: 0.8rem;
         color: #475569;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-top: 4px;
+        letter-spacing: 0.08em;
+        margin-top: 6px;
+        opacity: 0.7;
     }
 
+    /* ----- Header with animated gradient text ----- */
     .fancy-header {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
-        font-size: 3.8rem;
+        font-size: 4.2rem;
         background: linear-gradient(135deg, #0f172a 0%, #3b82f6 40%, #10b981 100%);
+        background-size: 200% 200%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        animation: gradientShift 6s ease-in-out infinite alternate;
         letter-spacing: -0.02em;
         line-height: 1.1;
-        text-shadow: 0 4px 24px rgba(59, 130, 246, 0.15);
+        text-shadow: 0 4px 32px rgba(59, 130, 246, 0.1);
         margin-bottom: -4px;
+    }
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
     }
     .fancy-sub {
         font-family: 'Inter', sans-serif;
         font-weight: 300;
         font-size: 1.1rem;
         color: #64748b;
-        letter-spacing: 0.15em;
+        letter-spacing: 0.2em;
         margin-top: 4px;
     }
     .fancy-divider {
@@ -127,68 +187,128 @@ st.markdown("""
         background: linear-gradient(90deg, #3b82f6, #10b981, #facc15);
         border-radius: 10px;
         margin-top: 8px;
-        margin-bottom: 24px;
+        margin-bottom: 28px;
         width: 100%;
-        opacity: 0.6;
+        opacity: 0.5;
+        animation: dividerPulse 3s ease-in-out infinite;
+    }
+    @keyframes dividerPulse {
+        0%, 100% { opacity: 0.4; transform: scaleX(1); }
+        50% { opacity: 0.8; transform: scaleX(1.01); }
     }
 
+    /* ----- Live indicator with pulsing dot ----- */
+    .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+        padding: 4px 16px 4px 12px;
+        border-radius: 30px;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        backdrop-filter: blur(4px);
+        margin-left: 12px;
+    }
+    .live-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        animation: pulseDot 1.5s ease-in-out infinite;
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+    }
+    @keyframes pulseDot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ----- Tabs styling with fade-in animation ----- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
-        background: rgba(255,255,255,0.3);
-        backdrop-filter: blur(8px);
-        border-radius: 16px;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(12px);
+        border-radius: 20px;
         padding: 6px;
-        border: 1px solid rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.15);
     }
     .stTabs [data-baseweb="tab"] {
         font-family: 'Inter', sans-serif;
         font-weight: 500;
         font-size: 0.9rem;
-        padding: 8px 20px;
-        border-radius: 12px;
+        padding: 10px 24px;
+        border-radius: 14px;
         color: #475569;
-        transition: all 0.2s;
+        transition: all 0.3s;
         background: transparent !important;
     }
     .stTabs [aria-selected="true"] {
-        background: rgba(255,255,255,0.6) !important;
+        background: rgba(255,255,255,0.5) !important;
         color: #0f172a !important;
         font-weight: 600;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-        backdrop-filter: blur(4px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+        backdrop-filter: blur(8px);
     }
     .dark-mode .stTabs [data-baseweb="tab-list"] {
-        background: rgba(30, 41, 59, 0.4);
+        background: rgba(30, 41, 59, 0.3);
         border-color: rgba(255,255,255,0.05);
     }
     .dark-mode .stTabs [aria-selected="true"] {
         background: rgba(255,255,255,0.08) !important;
         color: #facc15 !important;
     }
+    /* Fade-in for tab content */
+    .stTabs [role="tabpanel"] {
+        animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
+    /* ----- Chart containers with subtle glow ----- */
     .chart-container {
-        background: rgba(255,255,255,0.4);
+        background: rgba(255,255,255,0.3);
         backdrop-filter: blur(8px);
-        border-radius: 20px;
-        padding: 16px;
-        border: 1px solid rgba(255,255,255,0.2);
-        margin-bottom: 16px;
+        border-radius: 24px;
+        padding: 20px;
+        border: 1px solid rgba(255,255,255,0.15);
+        margin-bottom: 20px;
         transition: all 0.3s;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.02);
     }
     .chart-container:hover {
-        border-color: rgba(59, 130, 246, 0.3);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.04);
+        border-color: rgba(59, 130, 246, 0.2);
+        box-shadow: 0 8px 40px rgba(59, 130, 246, 0.04);
     }
 
+    /* ----- Sidebar styling ----- */
+    .css-1d391kg, .css-1aumxhk, .stSidebar {
+        background: rgba(255,255,255,0.4) !important;
+        backdrop-filter: blur(20px) !important;
+        border-right: 1px solid rgba(255,255,255,0.1) !important;
+        box-shadow: 4px 0 40px rgba(0,0,0,0.02);
+    }
+    .dark-mode .css-1d391kg, .dark-mode .css-1aumxhk, .dark-mode .stSidebar {
+        background: rgba(10, 15, 26, 0.7) !important;
+        border-right: 1px solid rgba(255,255,255,0.03) !important;
+    }
+
+    /* ----- Responsive adjustments ----- */
     @media (max-width: 600px) {
-        .fancy-header { font-size: 2.4rem !important; }
-        .fancy-sub { font-size: 0.85rem !important; }
-        .metric-value { font-size: 1.5rem !important; }
-        .metric-label { font-size: 0.7rem !important; }
-        .metric-card { padding: 12px 8px !important; }
+        .fancy-header { font-size: 2.6rem !important; }
+        .fancy-sub { font-size: 0.8rem !important; }
+        .metric-value { font-size: 1.6rem !important; }
+        .metric-label { font-size: 0.65rem !important; }
+        .metric-card { padding: 14px 10px !important; }
         .row-widget.stColumns { flex-wrap: wrap !important; }
         .row-widget.stColumns > div { flex: 1 1 45% !important; min-width: 130px !important; }
         .js-plotly-plot .plotly .main-svg { height: 350px !important; }
+        .live-indicator { font-size: 0.7rem; padding: 2px 12px; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -197,11 +317,17 @@ st.markdown("""
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
+# --- Header with live indicator ---
 col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
-    <div class="fancy-header">☕ MiDAY System</div>
-    <div class="fancy-sub">Live Business Intelligence · Powered by MiDAY</div>
+    <div style="display: flex; align-items: center; flex-wrap: wrap;">
+        <div class="fancy-header">☕ MiDAY System</div>
+        <div class="live-indicator">
+            <span class="live-dot"></span> LIVE
+        </div>
+    </div>
+    <div class="fancy-sub">Real‑time Business Intelligence · Powered by MiDAY</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
@@ -214,7 +340,7 @@ if st.session_state.dark_mode:
     st.markdown('<body class="dark-mode">', unsafe_allow_html=True)
 
 # --- Data Loader ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE WITH YOUR LINK
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE
 
 @st.cache_data(ttl=600)
 def load_data():
@@ -250,8 +376,9 @@ if df.empty:
 def fmt_currency(value):
     return f"{CURRENCY} {value:,.0f}"
 
-# --- Sidebar ---
+# --- Sidebar (collapsed by default) ---
 st.sidebar.title("🔍 Filters")
+st.sidebar.markdown("---")
 
 min_date = df["Date"].min().date()
 max_date = df["Date"].max().date()
@@ -310,6 +437,53 @@ if compare_mode and len(date_range_2) == 2:
 else:
     fdf_compare = pd.DataFrame()
 
+# --- Animated metric counters (via HTML + JS) ---
+# We'll pass the values to a small JavaScript that animates from 0 to target.
+# We'll embed it in a markdown block.
+
+# Compute metrics
+rev = fdf['Revenue'].sum()
+profit = fdf['Profit'].sum()
+margin = (profit / rev * 100) if rev > 0 else 0
+orders = len(fdf)
+units = fdf['Quantity'].sum()
+
+# We'll create a div with data attributes and a script to animate.
+# This script will run when the page loads.
+
+st.markdown(f"""
+<script>
+function animateNumber(element, target, duration) {{
+    let start = 0;
+    const step = (timestamp) => {{
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        const current = Math.floor(progress * target);
+        element.textContent = current.toLocaleString();
+        if (progress < 1) {{
+            window.requestAnimationFrame(step);
+        }} else {{
+            element.textContent = target.toLocaleString();
+        }}
+    }};
+    window.requestAnimationFrame(step);
+}}
+
+window.addEventListener('load', function() {{
+    const revEl = document.getElementById('metric-revenue');
+    const profitEl = document.getElementById('metric-profit');
+    const marginEl = document.getElementById('metric-margin');
+    const ordersEl = document.getElementById('metric-orders');
+    const unitsEl = document.getElementById('metric-units');
+    if (revEl) animateNumber(revEl, {rev}, 800);
+    if (profitEl) animateNumber(profitEl, {profit}, 800);
+    if (marginEl) {{ marginEl.textContent = '{margin:.1f}%'; }} // no animation for percentage
+    if (ordersEl) animateNumber(ordersEl, {orders}, 800);
+    if (unitsEl) animateNumber(unitsEl, {units}, 800);
+}});
+</script>
+""", unsafe_allow_html=True)
+
 # --- Tabs ---
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "📋 Raw"])
 
@@ -322,7 +496,7 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">💰</span>
-            <div class="metric-value">{fmt_currency(fdf['Revenue'].sum())}</div>
+            <div class="metric-value" id="metric-revenue">0</div>
             <div class="metric-label">Revenue</div>
         </div>
         """, unsafe_allow_html=True)
@@ -330,16 +504,15 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">📈</span>
-            <div class="metric-value">{fmt_currency(fdf['Profit'].sum())}</div>
+            <div class="metric-value" id="metric-profit">0</div>
             <div class="metric-label">Profit</div>
         </div>
         """, unsafe_allow_html=True)
     with col3:
-        margin = (fdf['Profit'].sum() / fdf['Revenue'].sum() * 100) if fdf['Revenue'].sum() > 0 else 0
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">📊</span>
-            <div class="metric-value">{margin:.1f}%</div>
+            <div class="metric-value" id="metric-margin">{margin:.1f}%</div>
             <div class="metric-label">Gross Margin</div>
         </div>
         """, unsafe_allow_html=True)
@@ -347,7 +520,7 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">🧾</span>
-            <div class="metric-value">{len(fdf):,}</div>
+            <div class="metric-value" id="metric-orders">0</div>
             <div class="metric-label">Orders</div>
         </div>
         """, unsafe_allow_html=True)
@@ -355,7 +528,7 @@ with tab1:
         st.markdown(f"""
         <div class="metric-card">
             <span class="metric-icon">📦</span>
-            <div class="metric-value">{fdf['Quantity'].sum():,}</div>
+            <div class="metric-value" id="metric-units">0</div>
             <div class="metric-label">Units</div>
         </div>
         """, unsafe_allow_html=True)
@@ -376,7 +549,8 @@ with tab1:
             fig = px.line(daily, x="Date", y="Revenue", title="Revenue Trend", markers=True,
                           color_discrete_sequence=["#3b82f6"])
             fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
-                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+                              plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                              font=dict(family="Inter, sans-serif"))
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
             st.plotly_chart(fig, use_container_width=True)
