@@ -5,9 +5,9 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
 
-# =====================================================
+# ============================================================
 CURRENCY = "UGX"
-# =====================================================
+# ============================================================
 
 st.set_page_config(
     page_title="MiDAY Insights",
@@ -16,44 +16,32 @@ st.set_page_config(
     page_icon="☕"
 )
 
-# --- Dark mode toggle state ---
+# --- Dark mode state ---
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-# --- CSS styles based on dark_mode (safe, no body class) ---
+# --- Safe CSS: applied conditionally based on dark_mode ---
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
-        /* Dark mode */
         .stApp { background: #0a0f1a; }
-        .main-header, .metric-value, .fancy-header { color: #e2e8f0 !important; }
-        .metric-card {
-            background: rgba(20, 30, 50, 0.6) !important;
-            backdrop-filter: blur(12px) !important;
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
-        }
-        .metric-card:hover { border-color: rgba(59, 130, 246, 0.4) !important; }
+        .metric-card { background: rgba(20,30,50,0.7) !important; border: 1px solid rgba(255,255,255,0.08) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important; }
+        .metric-card:hover { border-color: rgba(59,130,246,0.4) !important; }
+        .metric-value { color: #e2e8f0 !important; }
         .metric-label { color: #94a3b8 !important; }
         .fancy-sub { color: #94a3b8 !important; }
         .stTabs [data-baseweb="tab"] { color: #94a3b8 !important; }
         .stTabs [aria-selected="true"] { color: #facc15 !important; border-bottom-color: #facc15 !important; }
-        .chart-container { background: rgba(20, 30, 50, 0.3) !important; border-color: rgba(255,255,255,0.05) !important; }
-        .stSidebar { background: rgba(10, 15, 26, 0.7) !important; border-right: 1px solid rgba(255,255,255,0.03) !important; }
+        .chart-container { background: rgba(20,30,50,0.3) !important; border-color: rgba(255,255,255,0.05) !important; }
+        .stSidebar { background: rgba(10,15,26,0.7) !important; border-right: 1px solid rgba(255,255,255,0.03) !important; }
     </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
     <style>
-        /* Light mode */
         .stApp { background: #f5f7fa; }
-        .metric-card {
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
-        }
-        .metric-card:hover { border-color: rgba(59, 130, 246, 0.3); }
+        .metric-card { background: rgba(255,255,255,0.5); box-shadow: 0 8px 32px rgba(0,0,0,0.04); }
+        .metric-card:hover { border-color: rgba(59,130,246,0.3); }
         .metric-value { color: #0f172a; }
         .metric-label { color: #475569; }
         .fancy-sub { color: #64748b; }
@@ -64,14 +52,11 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# --- Shared CSS (animations, glass, fonts) ---
+# --- Global CSS (animations, glass, fonts) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    /* Animated gradient header */
     .fancy-header {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 700;
@@ -113,7 +98,6 @@ st.markdown("""
         50% { opacity: 0.8; transform: scaleX(1.01); }
     }
 
-    /* Live indicator */
     .live-indicator {
         display: inline-flex;
         align-items: center;
@@ -122,10 +106,10 @@ st.markdown("""
         font-size: 0.8rem;
         font-weight: 600;
         color: #10b981;
-        background: rgba(16, 185, 129, 0.1);
+        background: rgba(16,185,129,0.1);
         padding: 4px 16px 4px 12px;
         border-radius: 30px;
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(16,185,129,0.2);
         backdrop-filter: blur(4px);
         margin-left: 12px;
     }
@@ -136,19 +120,20 @@ st.markdown("""
         border-radius: 50%;
         background: #10b981;
         animation: pulseDot 1.5s ease-in-out infinite;
-        box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        box-shadow: 0 0 12px rgba(16,185,129,0.4);
     }
     @keyframes pulseDot {
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.4; transform: scale(0.8); }
     }
 
-    /* Glass metric cards */
     .metric-card {
         border-radius: 24px;
         padding: 24px 16px;
         text-align: center;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
         margin: 8px 0;
         position: relative;
         overflow: hidden;
@@ -177,7 +162,7 @@ st.markdown("""
     }
     .metric-card:hover {
         transform: translateY(-6px) scale(1.02);
-        box-shadow: 0 16px 64px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 16px 64px rgba(0,0,0,0.08);
     }
     .metric-icon {
         font-size: 2.2rem;
@@ -208,7 +193,6 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Tabs with fade-in */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background: rgba(255,255,255,0.2);
@@ -240,7 +224,6 @@ st.markdown("""
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Chart containers */
     .chart-container {
         backdrop-filter: blur(8px);
         border-radius: 24px;
@@ -251,17 +234,15 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.02);
     }
     .chart-container:hover {
-        border-color: rgba(59, 130, 246, 0.2);
-        box-shadow: 0 8px 40px rgba(59, 130, 246, 0.04);
+        border-color: rgba(59,130,246,0.2);
+        box-shadow: 0 8px 40px rgba(59,130,246,0.04);
     }
 
-    /* Sidebar */
     .stSidebar {
         backdrop-filter: blur(20px) !important;
         box-shadow: 4px 0 40px rgba(0,0,0,0.02);
     }
 
-    /* Responsive */
     @media (max-width: 600px) {
         .fancy-header { font-size: 2.6rem !important; }
         .fancy-sub { font-size: 0.8rem !important; }
@@ -276,12 +257,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- Header ---
+# --- Header with dark toggle ---
 col_title, col_toggle = st.columns([4, 1])
 with col_title:
     st.markdown("""
     <div style="display: flex; align-items: center; flex-wrap: wrap;">
-        <div class="fancy-header">☕ MiDAY Sales Tracking System</div>
+        <div class="fancy-header">☕ MiDAY Sales System</div>
         <div class="live-indicator">
             <span class="live-dot"></span> LIVE
         </div>
@@ -296,7 +277,7 @@ with col_toggle:
         st.rerun()
 
 # --- Data Loader ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE THIS
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE
 
 @st.cache_data(ttl=600)
 def load_data():
