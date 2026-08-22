@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
-import time  # for auto‑refresh
+import time
 
 # ============================================================
 CURRENCY = "UGX"
@@ -21,7 +21,7 @@ st.set_page_config(
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-# --- Safe CSS (same as the working version) ---
+# --- Safe CSS (conditionally applied) ---
 if st.session_state.dark_mode:
     st.markdown("""
     <style>
@@ -278,7 +278,7 @@ with col_toggle:
         st.rerun()
 
 # --- Data Loader ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE
+CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"  # <-- REPLACE WITH YOUR GOOGLE SHEETS CSV LINK
 
 @st.cache_data(ttl=600)
 def load_data():
@@ -318,8 +318,18 @@ def fmt_currency(value):
 st.sidebar.title("🔍 Filters")
 st.sidebar.markdown("---")
 
-# AUTO-REFRESH TOGGLE (NEW)
+# Auto‑refresh toggle
 auto_refresh = st.sidebar.checkbox("🔄 Auto‑refresh every 30s")
+
+# Animation speed slider (for bar race)
+animation_speed = st.sidebar.slider(
+    "🏁 Bar Race Speed (ms per frame)",
+    min_value=300,
+    max_value=5000,
+    value=1500,
+    step=100,
+    help="Lower = faster, Higher = slower"
+)
 
 min_date = df["Date"].min().date()
 max_date = df["Date"].max().date()
@@ -434,7 +444,7 @@ with tab1:
         col1.metric("Revenue Change", fmt_currency(delta_rev))
         col2.metric("Profit Change", fmt_currency(delta_profit))
 
-    # ---- TIME SLIDER for the trend chart (NEW) ----
+    # ---- Time slider for trend chart ----
     st.subheader("📅 Timeline Slider")
     min_ts = fdf['Date'].min()
     max_ts = fdf['Date'].max()
@@ -457,7 +467,7 @@ with tab1:
             fig.update_layout(yaxis_title=CURRENCY, height=350, hovermode="x unified",
                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
                               font=dict(family="Inter, sans-serif"),
-                              transition_duration=500)  # <-- SMOOTH TRANSITION
+                              transition_duration=500)
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
             st.plotly_chart(fig, use_container_width=True)
@@ -595,16 +605,15 @@ with tab3:
     fig.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
     st.plotly_chart(fig, use_container_width=True)
 
-    # ---- ANIMATED BAR RACE (NEW) ----
+    # ---- ANIMATED BAR RACE with speed slider ----
     st.subheader("🏁 Animated Bar Race (Monthly Product Revenue)")
-    # Prepare data: group by month and product
+    st.caption(f"Current speed: {animation_speed} ms per frame (adjust in sidebar)")
+
     fdf_month = fdf.copy()
     fdf_month["Month"] = fdf_month["Date"].dt.to_period("M").astype(str)
     race_data = fdf_month.groupby(["Month", "Product Name"])["Revenue"].sum().reset_index()
 
-    # Create animated bar race using Plotly's animation_frame
     if not race_data.empty:
-        # Sort months chronologically
         months_sorted = sorted(race_data["Month"].unique())
         race_data["Month"] = pd.Categorical(race_data["Month"], categories=months_sorted, ordered=True)
         race_data = race_data.sort_values("Month")
@@ -627,7 +636,11 @@ with tab3:
             paper_bgcolor="rgba(0,0,0,0)",
             transition_duration=700
         )
-        fig_race.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.05)")
+
+        # Apply the speed from sidebar slider
+        fig_race.layout.updatemenus[0].buttons[0].args[1]["frame"]["duration"] = animation_speed
+        fig_race.layout.updatemenus[0].buttons[0].args[1]["transition"]["duration"] = int(animation_speed * 0.6)
+
         st.plotly_chart(fig_race, use_container_width=True)
     else:
         st.info("Not enough data for the animated race (need multiple months and products).")
@@ -685,7 +698,7 @@ with tab4:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-# --- Auto‑refresh logic (NEW) ---
+# --- Auto‑refresh logic ---
 if auto_refresh:
     st.sidebar.info("🔄 Auto‑refresh is ON – updating every 30 seconds")
     time.sleep(30)
