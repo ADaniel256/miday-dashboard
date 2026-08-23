@@ -235,7 +235,6 @@ st.markdown("""
     }
     .stSidebar { backdrop-filter: blur(20px) !important; box-shadow: 4px 0 40px rgba(0,0,0,0.01); }
 
-    /* Inventory status badges */
     .status-badge {
         display: inline-block;
         padding: 2px 12px;
@@ -355,34 +354,41 @@ def load_inventory():
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["Item Name"], how="all")
     df = df[df["Item Name"].notna()]
-    # Clean numeric columns
+    # Ensure Date column exists
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df.dropna(subset=["Date"])
+    else:
+        df["Date"] = pd.Timestamp.now()
+    # Numeric columns – exact names from your sheet
     for col in ["Quantity Received", "Unit Cost (UGX)", "Total Cost (UGX)", "Quantity Used", "Remaining Stock", "Reorder Level"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    # Calculate remaining stock if not present
-    if "Remaining Stock" in df.columns:
-        df["Current Stock"] = df["Remaining Stock"]
-    elif "Quantity Received" in df.columns and "Quantity Used" in df.columns:
-        df["Current Stock"] = df["Quantity Received"] - df["Quantity Used"]
-    else:
-        df["Current Stock"] = 0
+        else:
+            df[col] = 0
+    # Keep only the most recent entry per item
+    df_sorted = df.sort_values("Date", ascending=False)
+    latest = df_sorted.drop_duplicates(subset=["Item Name"], keep="first").copy()
+    # Use the latest Remaining Stock
+    latest["Current Stock"] = latest["Remaining Stock"]
     # Calculate total value
-    if "Unit Cost (UGX)" in df.columns:
-        df["Total Value"] = df["Current Stock"] * df["Unit Cost (UGX)"]
+    if latest["Total Cost (UGX)"].sum() == 0 and latest["Unit Cost (UGX)"].sum() > 0:
+        latest["Total Value"] = latest["Current Stock"] * latest["Unit Cost (UGX)"]
     else:
-        df["Total Value"] = 0
-    # Determine stock status
+        latest["Total Value"] = latest["Total Cost (UGX)"]
+    # Status based on current stock and reorder level
     def get_status(row):
-        if row.get("Current Stock", 0) <= 0:
+        stock = row.get("Current Stock", 0)
+        reorder = row.get("Reorder Level", 0)
+        if stock <= 0:
             return "Out of Stock"
-        elif row.get("Reorder Level", 0) > 0 and row["Current Stock"] <= row["Reorder Level"]:
+        elif reorder > 0 and stock <= reorder:
             return "Low Stock"
         else:
             return "In Stock"
-    df["Status"] = df.apply(get_status, axis=1)
-    # Map Item Category
-    df["Item Category"] = df.get("Item Category", "Uncategorized").fillna("Uncategorized")
-    return df
+    latest["Status"] = latest.apply(get_status, axis=1)
+    latest["Item Category"] = latest.get("Item Category", "Uncategorized").fillna("Uncategorized")
+    return latest
 
 sales_df = load_sales()
 expenses_df = load_expenses()
@@ -445,7 +451,7 @@ if not expenses_df.empty:
 else:
     filtered_expenses = pd.DataFrame()
 
-# Filter inventory
+# Filter inventory (by category only – no date filter because we use latest entries)
 if not inventory_df.empty:
     filtered_inventory = inventory_df[inventory_df["Item Category"].isin(inventory_categories)]
 else:
@@ -466,7 +472,7 @@ total_items = len(filtered_inventory) if not filtered_inventory.empty else 0
 low_stock_items = len(filtered_inventory[filtered_inventory["Status"] == "Low Stock"]) if not filtered_inventory.empty else 0
 out_of_stock_items = len(filtered_inventory[filtered_inventory["Status"] == "Out of Stock"]) if not filtered_inventory.empty else 0
 
-# --- Tabs (6 tabs now) ---
+# --- Tabs ---
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📦 Inventory", "📋 Raw"])
 
 # ===== TAB 1: OVERVIEW =====
@@ -722,14 +728,13 @@ with tab5:
         col3.metric("Low Stock Items", low_stock_items, delta="⚠️ Needs attention" if low_stock_items > 0 else None)
         col4.metric("Out of Stock", out_of_stock_items, delta="🚫 Reorder needed" if out_of_stock_items > 0 else None)
 
-        # Inventory filter toggle
+        # Inventory view toggle
         inv_view = st.radio(
             "View:",
             ["All Items", "Raw Materials Only", "Finished Goods Only"],
             horizontal=True
         )
 
-        # Apply view filter
         if inv_view == "Raw Materials Only":
             display_inv = filtered_inventory[filtered_inventory["Item Category"].str.lower().str.contains("raw")]
         elif inv_view == "Finished Goods Only":
@@ -756,7 +761,6 @@ with tab5:
             with col2:
                 with st.container():
                     st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                    # Stock status distribution
                     status_counts = display_inv["Status"].value_counts().reset_index()
                     status_counts.columns = ["Status", "Count"]
                     color_map = {"In Stock": "#51cf66", "Low Stock": "#fcc419", "Out of Stock": "#ff6b6b"}
@@ -768,13 +772,10 @@ with tab5:
                     st.plotly_chart(fig, use_container_width=True)
                     st.markdown('</div>', unsafe_allow_html=True)
 
-            # Stock levels by item (bar chart)
+            # Stock levels by item
             with st.container():
                 st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-                # Sort by stock level
                 stock_sorted = display_inv.sort_values("Current Stock", ascending=False).head(20)
-                # Color by status
-                colors = stock_sorted["Status"].map(lambda x: "#51cf66" if x == "In Stock" else "#fcc419" if x == "Low Stock" else "#ff6b6b")
                 fig = px.bar(stock_sorted, x="Item Name", y="Current Stock", title="Stock Levels by Item",
                              color="Status", color_discrete_map={"In Stock": "#51cf66", "Low Stock": "#fcc419", "Out of Stock": "#ff6b6b"})
                 fig.update_layout(height=400, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
@@ -816,7 +817,7 @@ with tab5:
                 file_name="inventory_data.csv"
             )
 
-# ===== TAB 6: RAW DATA (Sales) =====
+# ===== TAB 6: RAW DATA =====
 with tab6:
     st.subheader("📋 Sales Transaction Details")
     st.dataframe(
