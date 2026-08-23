@@ -15,7 +15,7 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 # ====================================================
-# COFFEE THEME CSS (same as before – kept concise)
+# COFFEE THEME CSS (with green LIVE indicator)
 # ====================================================
 if st.session_state.dark_mode:
     st.markdown("""
@@ -55,7 +55,7 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# ---- Shared CSS (same as previous versions) ----
+# ---- Shared CSS (includes green LIVE indicator) ----
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
@@ -101,6 +101,7 @@ st.markdown("""
         50% { opacity: 0.8; transform: scaleX(1.01); }
     }
 
+    /* ----- GREEN LIVE INDICATOR (heartbeat) ----- */
     .live-indicator {
         display: inline-flex;
         align-items: center;
@@ -108,11 +109,11 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
         font-size: 0.8rem;
         font-weight: 600;
-        color: #8B5A2B;
-        background: rgba(139,90,43,0.10);
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
         padding: 4px 16px 4px 12px;
         border-radius: 30px;
-        border: 1px solid rgba(139,90,43,0.15);
+        border: 1px solid rgba(16, 185, 129, 0.2);
         backdrop-filter: blur(4px);
         margin-left: 12px;
     }
@@ -121,13 +122,13 @@ st.markdown("""
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #8B5A2B;
-        animation: pulseDot 1.5s ease-in-out infinite;
-        box-shadow: 0 0 12px rgba(139,90,43,0.3);
+        background: #10b981;
+        animation: pulseDot 1s ease-in-out infinite;
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
     }
     @keyframes pulseDot {
         0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(0.8); }
+        50% { opacity: 0.3; transform: scale(0.7); }
     }
 
     .metric-card {
