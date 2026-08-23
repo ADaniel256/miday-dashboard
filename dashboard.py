@@ -55,7 +55,7 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# ---- Shared CSS (includes green LIVE indicator) ----
+# ---- Shared CSS ----
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap');
@@ -101,7 +101,6 @@ st.markdown("""
         50% { opacity: 0.8; transform: scaleX(1.01); }
     }
 
-    /* ----- GREEN LIVE INDICATOR (heartbeat) ----- */
     .live-indicator {
         display: inline-flex;
         align-items: center;
@@ -269,7 +268,7 @@ with col_title:
         <div class="fancy-header">☕ MiDAY System</div>
         <div class="live-indicator"><span class="live-dot"></span> LIVE</div>
     </div>
-    <div class="fancy-sub">Real‑time Business Stats · Powered by MiDAY Investments</div>
+    <div class="fancy-sub">Real‑time Business Intelligence · Powered by Google Sheets</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
@@ -321,7 +320,9 @@ def load_sales():
         df["Quantity"] = 0
     df["Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
     df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
+    df["Agent"] = df.get("Agent", "").fillna("")  # Keep Agent column
     df["Profit"] = df["Revenue"] - df["COGS"]
+    df["Profit per Unit"] = (df["Profit"] / df["Quantity"]).fillna(0).round(0)
     df["Margin %"] = (df["Profit"] / df["Revenue"] * 100).round(1).fillna(0)
     return df
 
@@ -346,9 +347,6 @@ def load_expenses():
     df["Status"] = df.get("Status", "Unknown").fillna("Unknown")
     return df
 
-# ============================================================
-# INVENTORY LOADER – HYBRID APPROACH
-# ============================================================
 @st.cache_data(ttl=600)
 def load_inventory():
     """Loads inventory and returns both raw data and latest-per-item aggregated data."""
@@ -360,30 +358,25 @@ def load_inventory():
     df = df.dropna(subset=["Item Name"], how="all")
     df = df[df["Item Name"].notna()]
     
-    # Convert Date
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df.dropna(subset=["Date"])
     else:
         df["Date"] = pd.Timestamp.now()
     
-    # Convert numeric columns
     for col in ["Quantity Received", "Unit Cost (UGX)", "Total Cost (UGX)", "Quantity Used", "Remaining Stock", "Reorder Level"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
         else:
             df[col] = 0
     
-    # Use Remaining Stock as Current Stock
     df["Current Stock"] = df["Remaining Stock"]
     
-    # Calculate Total Value: use Total Cost if available, else compute
     if df["Total Cost (UGX)"].sum() != 0:
         df["Total Value"] = df["Total Cost (UGX)"]
     else:
         df["Total Value"] = df["Current Stock"] * df["Unit Cost (UGX)"]
     
-    # Determine status for each row
     def get_status(row):
         stock = row.get("Current Stock", 0)
         reorder = row.get("Reorder Level", 0)
@@ -396,12 +389,9 @@ def load_inventory():
     df["Status"] = df.apply(get_status, axis=1)
     df["Item Category"] = df.get("Item Category", "Uncategorized").fillna("Uncategorized")
     
-    # --- Create latest-per-item DataFrame for KPIs and charts ---
     latest = df.sort_values("Date", ascending=False).drop_duplicates(subset=["Item Name"], keep="first").copy()
-    
-    return df, latest  # raw_all_rows, latest_per_item
+    return df, latest
 
-# Load data
 sales_df = load_sales()
 expenses_df = load_expenses()
 inventory_raw, inventory_latest = load_inventory()
@@ -410,7 +400,6 @@ if sales_df.empty:
     st.error("Sales data not loaded. Check your CSV URL.")
     st.stop()
 
-# --- Helper ---
 def fmt_currency(v):
     return f"{CURRENCY} {v:,.0f}"
 
@@ -425,19 +414,20 @@ min_date = sales_df["Date"].min().date()
 max_date = sales_df["Date"].max().date()
 date_range = st.sidebar.date_input("Date Range", [min_date, max_date])
 
-# Sales filters
 categories = st.sidebar.multiselect("Category", sorted(sales_df["Category"].unique()), default=sorted(sales_df["Category"].unique()))
 statuses = st.sidebar.multiselect("Payment Status", sorted(sales_df["Payment Status"].unique()), default=sorted(sales_df["Payment Status"].unique()))
 products = st.sidebar.multiselect("Product (optional)", sorted(sales_df["Product Name"].unique()), default=sorted(sales_df["Product Name"].unique()))
 
-# Expense Type filter
+# Agent filter (NEW)
+all_agents = sorted([a for a in sales_df["Agent"].unique() if a and str(a).strip() != ""])
+agent_filter = st.sidebar.multiselect("Agent (optional)", options=all_agents, default=all_agents) if all_agents else []
+
 expense_types = st.sidebar.multiselect(
     "Expense Type",
     options=sorted(expenses_df["Expense Type"].unique()) if not expenses_df.empty else [],
     default=sorted(expenses_df["Expense Type"].unique()) if not expenses_df.empty else []
 )
 
-# Inventory filters – we use the latest data for category filtering
 inventory_categories = st.sidebar.multiselect(
     "Inventory Category",
     options=sorted(inventory_latest["Item Category"].unique()) if not inventory_latest.empty else [],
@@ -452,18 +442,15 @@ filtered_sales = sales_df[
     (sales_df["Payment Status"].isin(statuses)) &
     (sales_df["Product Name"].isin(products))
 ]
+if agent_filter:
+    filtered_sales = filtered_sales[filtered_sales["Agent"].isin(agent_filter)]
 
-# Filter expenses
-if not expenses_df.empty:
-    filtered_expenses = expenses_df[
-        (expenses_df["Date"] >= pd.to_datetime(date_range[0])) &
-        (expenses_df["Date"] <= pd.to_datetime(date_range[1])) &
-        (expenses_df["Expense Type"].isin(expense_types))
-    ]
-else:
-    filtered_expenses = pd.DataFrame()
+filtered_expenses = expenses_df[
+    (expenses_df["Date"] >= pd.to_datetime(date_range[0])) &
+    (expenses_df["Date"] <= pd.to_datetime(date_range[1])) &
+    (expenses_df["Expense Type"].isin(expense_types))
+] if not expenses_df.empty else pd.DataFrame()
 
-# Filter inventory (latest data for KPIs and charts)
 if not inventory_latest.empty:
     filtered_inventory_latest = inventory_latest[inventory_latest["Item Category"].isin(inventory_categories)]
     filtered_inventory_raw = inventory_raw[inventory_raw["Item Category"].isin(inventory_categories)]
@@ -480,16 +467,16 @@ net_profit = gross_profit - total_expenses
 margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
 net_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-# Inventory KPIs (based on latest entries)
+# Inventory KPIs
 total_inventory_value = filtered_inventory_latest["Total Value"].sum() if not filtered_inventory_latest.empty else 0
 total_items = len(filtered_inventory_latest) if not filtered_inventory_latest.empty else 0
 low_stock_items = len(filtered_inventory_latest[filtered_inventory_latest["Status"] == "Low Stock"]) if not filtered_inventory_latest.empty else 0
 out_of_stock_items = len(filtered_inventory_latest[filtered_inventory_latest["Status"] == "Out of Stock"]) if not filtered_inventory_latest.empty else 0
 
-# --- Tabs (6 tabs) ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📦 Inventory", "📋 Raw"])
+# --- Tabs (7 tabs now) ---
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📦 Inventory", "👥 Agents", "📋 Raw"])
 
-# ===== TAB 1: OVERVIEW =====
+# ===== TAB 1: OVERVIEW (with Daily Cash Flow) =====
 with tab1:
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Revenue", fmt_currency(total_revenue))
@@ -499,17 +486,40 @@ with tab1:
     col5.metric("Net Profit", fmt_currency(net_profit))
     col6.metric("Net Margin", f"{net_margin:.1f}%")
 
+    # ---- Daily Cash Flow ----
+    with st.container():
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        st.subheader("💰 Daily Cash Flow (Revenue – Expenses)")
+        daily_rev = filtered_sales.groupby("Date")["Revenue"].sum().reset_index()
+        daily_exp = filtered_expenses.groupby("Date")["Amount"].sum().reset_index() if not filtered_expenses.empty else pd.DataFrame(columns=["Date", "Amount"])
+        merged_daily = pd.merge(daily_rev, daily_exp, on="Date", how="outer").fillna(0)
+        merged_daily["Net Cash Flow"] = merged_daily["Revenue"] - merged_daily["Amount"]
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Revenue"], name="Revenue", marker_color="#8B5A2B"))
+        fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Amount"], name="Expenses", marker_color="#D4A373"))
+        fig.add_trace(go.Scatter(x=merged_daily["Date"], y=merged_daily["Net Cash Flow"], name="Net Cash Flow",
+                                 mode="lines+markers", line=dict(color="#10b981", width=3), marker=dict(size=8), yaxis="y2"))
+        fig.update_layout(
+            barmode="group",
+            title="Daily Revenue vs Expenses with Net Cash Flow",
+            height=400,
+            yaxis=dict(title=f"{CURRENCY}", side="left"),
+            yaxis2=dict(title=f"Net {CURRENCY}", overlaying="y", side="right"),
+            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500
+        )
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
     with col1:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            daily_rev = filtered_sales.groupby("Date")["Revenue"].sum().reset_index()
-            daily_exp = filtered_expenses.groupby("Date")["Amount"].sum().reset_index() if not filtered_expenses.empty else pd.DataFrame(columns=["Date", "Amount"])
-            merged_daily = pd.merge(daily_rev, daily_exp, on="Date", how="outer").fillna(0)
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Revenue"], name="Revenue", marker_color="#8B5A2B"))
-            fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Amount"], name="Expenses", marker_color="#D4A373"))
-            fig.update_layout(barmode="group", title="Revenue vs Expenses", height=350,
+            daily_rev_2 = filtered_sales.groupby("Date")["Revenue"].sum().reset_index()
+            fig = px.line(daily_rev_2, x="Date", y="Revenue", title="Revenue Trend", markers=True,
+                          color_discrete_sequence=["#8B5A2B"])
+            fig.update_layout(yaxis_title=CURRENCY, height=350,
                               plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
             fig.update_xaxes(showgrid=False)
             fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
@@ -532,7 +542,6 @@ with tab1:
                 else:
                     exp_group = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index()
                     x_col = "Expense Type"
-
                 if not exp_group.empty:
                     fig = px.pie(exp_group, names=x_col, values="Amount", hole=0.4,
                                  title=f"Expenses by {breakdown_type}",
@@ -545,26 +554,31 @@ with tab1:
                 st.info("No expense data available.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-# ===== TAB 2: PRODUCTS =====
+# ===== TAB 2: PRODUCTS (with Profit per Unit) =====
 with tab2:
     st.subheader("📦 Product Performance")
-    prod = filtered_sales.groupby("Product Name").agg({"Revenue": "sum", "Profit": "sum", "Quantity": "sum"}).reset_index()
+    prod = filtered_sales.groupby("Product Name").agg({
+        "Revenue": "sum",
+        "Profit": "sum",
+        "Quantity": "sum",
+        "Profit per Unit": "mean"  # average profit per unit
+    }).reset_index()
     prod["Margin %"] = (prod["Profit"] / prod["Revenue"] * 100).round(1).fillna(0)
+    prod["Revenue per Unit"] = (prod["Revenue"] / prod["Quantity"]).fillna(0).round(0)
     prod = prod.sort_values("Revenue", ascending=False)
 
+    # Chart: Revenue vs Profit per Unit
     fig = go.Figure()
     fig.add_trace(go.Bar(x=prod["Product Name"], y=prod["Revenue"], name="Revenue", marker_color="#8B5A2B"))
-    fig.add_trace(go.Bar(x=prod["Product Name"], y=prod["Profit"], name="Gross Profit", marker_color="#D4A373"))
-    fig.add_trace(go.Scatter(x=prod["Product Name"], y=prod["Margin %"], name="Margin %", mode="lines+markers",
-                             yaxis="y2", line=dict(color="#F1C40F", width=3), marker=dict(size=10)))
+    fig.add_trace(go.Scatter(x=prod["Product Name"], y=prod["Profit per Unit"], name="Profit per Unit",
+                             mode="lines+markers", yaxis="y2",
+                             line=dict(color="#10b981", width=3), marker=dict(size=10)))
     fig.update_layout(
-        yaxis=dict(title=f"{CURRENCY}", side="left"),
-        yaxis2=dict(overlaying="y", side="right", title="Margin %"),
+        yaxis=dict(title=f"{CURRENCY} (Revenue)", side="left"),
+        yaxis2=dict(title=f"{CURRENCY} (Profit per Unit)", overlaying="y", side="right"),
         barmode="group",
         height=450,
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        transition_duration=500
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
@@ -575,14 +589,36 @@ with tab2:
             "Revenue": fmt_currency,
             "Profit": fmt_currency,
             "Quantity": "{:,}",
+            "Profit per Unit": fmt_currency,
+            "Revenue per Unit": fmt_currency,
             "Margin %": "{:.1f}%"
         }), use_container_width=True)
 
     st.download_button("⬇️ Download Product Report (CSV)", prod.to_csv(index=False), file_name="product_performance.csv")
 
-# ===== TAB 3: TRENDS =====
+# ===== TAB 3: TRENDS (with Day-of-Week) =====
 with tab3:
     st.subheader("📅 Sales Trends and Breakdowns")
+
+    # ---- Day-of-Week Sales ----
+    with st.container():
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        st.subheader("📆 Sales by Day of Week")
+        dow = filtered_sales.copy()
+        dow["Day of Week"] = dow["Date"].dt.day_name()
+        dow_agg = dow.groupby("Day of Week")["Revenue"].sum().reset_index()
+        # Order days correctly
+        days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        dow_agg["Day of Week"] = pd.Categorical(dow_agg["Day of Week"], categories=days_order, ordered=True)
+        dow_agg = dow_agg.sort_values("Day of Week")
+        fig = px.bar(dow_agg, x="Day of Week", y="Revenue", title="Revenue by Day of Week",
+                     color_discrete_sequence=["#8B5A2B"])
+        fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
     gran = st.radio("Granularity", ["Daily", "Weekly", "Monthly"], horizontal=True)
 
     def agg_period(df, period):
@@ -614,15 +650,12 @@ with tab3:
         yaxis=dict(title=f"{CURRENCY}", side="left"),
         yaxis2=dict(overlaying="y", side="right", title="Profit / Margin %"),
         height=450,
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        transition_duration=500
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Animated bar race (sales)
     st.subheader("🏁 Animated Bar Race (Monthly Product Revenue)")
     st.caption(f"Current speed: {animation_speed} ms per frame (adjust in sidebar)")
 
@@ -634,7 +667,6 @@ with tab3:
         months_sorted = sorted(race_data["Month"].unique())
         race_data["Month"] = pd.Categorical(race_data["Month"], categories=months_sorted, ordered=True)
         race_data = race_data.sort_values("Month")
-
         fig_race = px.bar(
             race_data,
             x="Revenue",
@@ -728,29 +760,25 @@ with tab4:
 
     st.download_button("⬇️ Download Expenses CSV", filtered_expenses.to_csv(index=False), file_name="expenses.csv")
 
-# ===== TAB 5: INVENTORY (HYBRID) =====
+# ===== TAB 5: INVENTORY =====
 with tab5:
     st.subheader("📦 Inventory Management")
 
     if inventory_raw.empty:
         st.warning("No inventory data loaded. Please check your Inventory CSV URL.")
     else:
-        # KPIs based on latest entries
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Inventory Value", fmt_currency(total_inventory_value))
         col2.metric("Total Items", total_items)
         col3.metric("Low Stock Items", low_stock_items, delta="⚠️ Needs attention" if low_stock_items > 0 else None)
         col4.metric("Out of Stock", out_of_stock_items, delta="🚫 Reorder needed" if out_of_stock_items > 0 else None)
 
-        # Inventory view toggle – only for the table (raw data)
         inv_view = st.radio(
             "View table:",
             ["All Items", "Raw Materials Only", "Finished Goods Only"],
             horizontal=True
         )
 
-        # For charts and KPIs we already use filtered_inventory_latest (latest per item)
-        # For the table, we use filtered_inventory_raw (all rows)
         if inv_view == "Raw Materials Only":
             display_inv_raw = filtered_inventory_raw[filtered_inventory_raw["Item Category"].str.lower().str.contains("raw")]
         elif inv_view == "Finished Goods Only":
@@ -758,7 +786,6 @@ with tab5:
         else:
             display_inv_raw = filtered_inventory_raw
 
-        # ---- Charts based on latest entries ----
         col1, col2 = st.columns(2)
         with col1:
             with st.container():
@@ -791,7 +818,6 @@ with tab5:
                     st.info("No inventory data for charts.")
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Stock levels by item (latest entries) ----
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             if not filtered_inventory_latest.empty:
@@ -806,7 +832,6 @@ with tab5:
                 st.info("No inventory data for chart.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Low stock alert (latest entries) ----
         low_stock_items_df = filtered_inventory_latest[filtered_inventory_latest["Status"].isin(["Low Stock", "Out of Stock"])]
         if not low_stock_items_df.empty:
             st.subheader("⚠️ Items Needing Attention (Current)")
@@ -818,7 +843,6 @@ with tab5:
                 </div>
                 """, unsafe_allow_html=True)
 
-        # ---- Full inventory table (ALL rows) ----
         with st.expander("📋 Complete Inventory History (All Rows)"):
             if not display_inv_raw.empty:
                 table_cols = ["Date", "Item Name", "Item Category", "Current Stock", "Unit Cost (UGX)", "Total Value", "Reorder Level", "Status"]
@@ -835,24 +859,88 @@ with tab5:
             else:
                 st.info("No inventory rows match the selected view.")
 
-        # Download inventory CSV (all rows)
         st.download_button(
             "⬇️ Download Inventory CSV (All Rows)",
             display_inv_raw.to_csv(index=False) if not display_inv_raw.empty else "",
             file_name="inventory_history.csv"
         )
 
-# ===== TAB 6: RAW DATA =====
+# ===== TAB 6: AGENTS (NEW) =====
 with tab6:
+    st.subheader("👥 Agent Performance")
+
+    # Filter out empty agent values
+    agent_data = filtered_sales[filtered_sales["Agent"].notna() & (filtered_sales["Agent"] != "")]
+
+    if agent_data.empty:
+        st.info("No agent data available. Please add agent names to your sales records.")
+    else:
+        # KPIs for agents
+        total_agents = agent_data["Agent"].nunique()
+        total_agent_revenue = agent_data["Revenue"].sum()
+        total_agent_orders = len(agent_data)
+        avg_order_value = total_agent_revenue / total_agent_orders if total_agent_orders > 0 else 0
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Agents", total_agents)
+        col2.metric("Agent Revenue", fmt_currency(total_agent_revenue))
+        col3.metric("Total Orders", total_agent_orders)
+        col4.metric("Avg Order Value", fmt_currency(avg_order_value))
+
+        # Agent performance table
+        agent_perf = agent_data.groupby("Agent").agg({
+            "Revenue": "sum",
+            "Profit": "sum",
+            "Quantity": "sum",
+            "Date": "count"
+        }).rename(columns={"Date": "Orders"}).reset_index()
+        agent_perf["Avg Order Value"] = (agent_perf["Revenue"] / agent_perf["Orders"]).fillna(0).round(0)
+        agent_perf["Profit per Order"] = (agent_perf["Profit"] / agent_perf["Orders"]).fillna(0).round(0)
+        agent_perf["Margin %"] = (agent_perf["Profit"] / agent_perf["Revenue"] * 100).round(1).fillna(0)
+        agent_perf = agent_perf.sort_values("Revenue", ascending=False)
+
+        # Chart: Agent Revenue
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=agent_perf["Agent"], y=agent_perf["Revenue"], name="Revenue", marker_color="#8B5A2B"))
+        fig.add_trace(go.Scatter(x=agent_perf["Agent"], y=agent_perf["Avg Order Value"], name="Avg Order Value",
+                                 mode="lines+markers", yaxis="y2",
+                                 line=dict(color="#10b981", width=3), marker=dict(size=10)))
+        fig.update_layout(
+            yaxis=dict(title=f"{CURRENCY} (Revenue)", side="left"),
+            yaxis2=dict(title=f"{CURRENCY} (Avg Order)", overlaying="y", side="right"),
+            barmode="group",
+            height=450,
+            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500
+        )
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+        st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("📋 Detailed Agent Performance"):
+            st.dataframe(agent_perf.style.format({
+                "Revenue": fmt_currency,
+                "Profit": fmt_currency,
+                "Avg Order Value": fmt_currency,
+                "Profit per Order": fmt_currency,
+                "Orders": "{:,}",
+                "Quantity": "{:,}",
+                "Margin %": "{:.1f}%"
+            }), use_container_width=True)
+
+        st.download_button("⬇️ Download Agent Report (CSV)", agent_perf.to_csv(index=False), file_name="agent_performance.csv")
+
+# ===== TAB 7: RAW DATA =====
+with tab7:
     st.subheader("📋 Sales Transaction Details")
     st.dataframe(
         filtered_sales[["Date", "Product Name", "Category", "Quantity", "Unit Price",
-                        "Revenue", "COGS", "Profit", "Margin %", "Payment Status", "Notes"]]
+                        "Revenue", "COGS", "Profit", "Profit per Unit", "Margin %", "Payment Status", "Agent", "Notes"]]
         .style.format({
             "Unit Price": fmt_currency,
             "Revenue": fmt_currency,
             "COGS": fmt_currency,
             "Profit": fmt_currency,
+            "Profit per Unit": fmt_currency,
             "Margin %": "{:.1f}%",
             "Quantity": "{:,}"
         }),
