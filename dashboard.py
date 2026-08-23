@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import io
 import time
+import requests
 
 CURRENCY = "UGX"
 st.set_page_config(page_title="MiDAY Insights", layout="wide", initial_sidebar_state="collapsed", page_icon="☕")
@@ -30,6 +31,9 @@ if st.session_state.dark_mode:
         .chart-container { background: rgba(30,20,15,0.4) !important; border-color: rgba(255,255,255,0.04) !important; }
         .stSidebar { background: rgba(20,10,8,0.8) !important; border-right: 1px solid rgba(255,255,255,0.03) !important; }
         .stApp { color: #e2e8f0 !important; }
+        .inventory-alert { background: rgba(200,50,50,0.2) !important; border-left: 4px solid #ff6b6b !important; padding: 10px !important; border-radius: 8px !important; }
+        .inventory-ok { background: rgba(50,200,50,0.1) !important; border-left: 4px solid #51cf66 !important; padding: 10px !important; border-radius: 8px !important; }
+        .inventory-warning { background: rgba(200,200,50,0.15) !important; border-left: 4px solid #fcc419 !important; padding: 10px !important; border-radius: 8px !important; }
     </style>
     """, unsafe_allow_html=True)
 else:
@@ -45,6 +49,9 @@ else:
         .stTabs [aria-selected="true"] { color: #2C1810; border-bottom-color: #8B5A2B; }
         .chart-container { background: rgba(255,248,240,0.3); border-color: rgba(139,90,43,0.10); }
         .stSidebar { background: rgba(255,248,240,0.5) !important; border-right: 1px solid rgba(139,90,43,0.05) !important; }
+        .inventory-alert { background: rgba(255,200,200,0.3) !important; border-left: 4px solid #ff6b6b !important; padding: 10px !important; border-radius: 8px !important; }
+        .inventory-ok { background: rgba(200,255,200,0.2) !important; border-left: 4px solid #51cf66 !important; padding: 10px !important; border-radius: 8px !important; }
+        .inventory-warning { background: rgba(255,255,200,0.25) !important; border-left: 4px solid #fcc419 !important; padding: 10px !important; border-radius: 8px !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -228,6 +235,18 @@ st.markdown("""
     }
     .stSidebar { backdrop-filter: blur(20px) !important; box-shadow: 4px 0 40px rgba(0,0,0,0.01); }
 
+    /* Inventory status badges */
+    .status-badge {
+        display: inline-block;
+        padding: 2px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-in-stock { background: #51cf66; color: white; }
+    .status-low-stock { background: #fcc419; color: #2C1810; }
+    .status-out-of-stock { background: #ff6b6b; color: white; }
+
     @media (max-width: 600px) {
         .fancy-header { font-size: 2.6rem !important; }
         .fancy-sub { font-size: 0.8rem !important; }
@@ -262,12 +281,33 @@ with col_toggle:
 # ============================================================
 # DATA LOADERS
 # ============================================================
-CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"      # <-- REPLACE
-CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=1512430292&single=true&output=csv"      # <-- REPLACE
+CSV_URL_SALES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=2071886823&single=true&output=csv"
+CSV_URL_EXPENSES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=1512430292&single=true&output=csv"
+CSV_URL_INVENTORY = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8D3xOvu7VXVuwSSydp7I5TsrUnHd2dlzDy1g3MWaW1y0ojhEi4Ftvoi1ev4ZkeQeX4glRCzQvklsj/pub?gid=1059614497&single=true&output=csv"
+
+def load_csv_with_fallback(url):
+    """Load CSV from URL with fallback using requests if pandas fails."""
+    try:
+        return pd.read_csv(url)
+    except Exception as e:
+        # Fallback: use requests with headers
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            from io import StringIO
+            return pd.read_csv(StringIO(response.text))
+        except Exception as e2:
+            st.error(f"Error loading CSV: {e2}")
+            return pd.DataFrame()
 
 @st.cache_data(ttl=600)
 def load_sales():
-    df = pd.read_csv(CSV_URL_SALES)
+    df = load_csv_with_fallback(CSV_URL_SALES)
+    if df.empty:
+        return df
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["Date"], how="all")
     df = df[df["Date"].notna()]
@@ -288,13 +328,14 @@ def load_sales():
 
 @st.cache_data(ttl=600)
 def load_expenses():
-    df = pd.read_csv(CSV_URL_EXPENSES)
+    df = load_csv_with_fallback(CSV_URL_EXPENSES)
+    if df.empty:
+        return df
     df.columns = df.columns.str.strip()
     df = df.dropna(subset=["Date"], how="all")
     df = df[df["Date"].notna()]
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
-    # Map columns – adjust to your sheet
     if "Amount (UGX)" in df.columns:
         df["Amount"] = pd.to_numeric(df["Amount (UGX)"], errors="coerce").fillna(0)
     elif "Amount" in df.columns:
@@ -306,8 +347,46 @@ def load_expenses():
     df["Status"] = df.get("Status", "Unknown").fillna("Unknown")
     return df
 
+@st.cache_data(ttl=600)
+def load_inventory():
+    df = load_csv_with_fallback(CSV_URL_INVENTORY)
+    if df.empty:
+        return df
+    df.columns = df.columns.str.strip()
+    df = df.dropna(subset=["Item Name"], how="all")
+    df = df[df["Item Name"].notna()]
+    # Clean numeric columns
+    for col in ["Quantity Received", "Unit Cost (UGX)", "Total Cost (UGX)", "Quantity Used", "Remaining Stock", "Reorder Level"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    # Calculate remaining stock if not present
+    if "Remaining Stock" in df.columns:
+        df["Current Stock"] = df["Remaining Stock"]
+    elif "Quantity Received" in df.columns and "Quantity Used" in df.columns:
+        df["Current Stock"] = df["Quantity Received"] - df["Quantity Used"]
+    else:
+        df["Current Stock"] = 0
+    # Calculate total value
+    if "Unit Cost (UGX)" in df.columns:
+        df["Total Value"] = df["Current Stock"] * df["Unit Cost (UGX)"]
+    else:
+        df["Total Value"] = 0
+    # Determine stock status
+    def get_status(row):
+        if row.get("Current Stock", 0) <= 0:
+            return "Out of Stock"
+        elif row.get("Reorder Level", 0) > 0 and row["Current Stock"] <= row["Reorder Level"]:
+            return "Low Stock"
+        else:
+            return "In Stock"
+    df["Status"] = df.apply(get_status, axis=1)
+    # Map Item Category
+    df["Item Category"] = df.get("Item Category", "Uncategorized").fillna("Uncategorized")
+    return df
+
 sales_df = load_sales()
 expenses_df = load_expenses()
+inventory_df = load_inventory()
 
 if sales_df.empty:
     st.error("Sales data not loaded. Check your CSV URL.")
@@ -333,11 +412,18 @@ categories = st.sidebar.multiselect("Category", sorted(sales_df["Category"].uniq
 statuses = st.sidebar.multiselect("Payment Status", sorted(sales_df["Payment Status"].unique()), default=sorted(sales_df["Payment Status"].unique()))
 products = st.sidebar.multiselect("Product (optional)", sorted(sales_df["Product Name"].unique()), default=sorted(sales_df["Product Name"].unique()))
 
-# Expense Type filter (NEW)
+# Expense Type filter
 expense_types = st.sidebar.multiselect(
     "Expense Type",
-    options=sorted(expenses_df["Expense Type"].unique()),
-    default=sorted(expenses_df["Expense Type"].unique())
+    options=sorted(expenses_df["Expense Type"].unique()) if not expenses_df.empty else [],
+    default=sorted(expenses_df["Expense Type"].unique()) if not expenses_df.empty else []
+)
+
+# Inventory filters
+inventory_categories = st.sidebar.multiselect(
+    "Inventory Category",
+    options=sorted(inventory_df["Item Category"].unique()) if not inventory_df.empty else [],
+    default=sorted(inventory_df["Item Category"].unique()) if not inventory_df.empty else []
 )
 
 # Filter sales
@@ -349,24 +435,39 @@ filtered_sales = sales_df[
     (sales_df["Product Name"].isin(products))
 ]
 
-# Filter expenses (including Expense Type)
-filtered_expenses = expenses_df[
-    (expenses_df["Date"] >= pd.to_datetime(date_range[0])) &
-    (expenses_df["Date"] <= pd.to_datetime(date_range[1])) &
-    (expenses_df["Expense Type"].isin(expense_types))
-]
+# Filter expenses
+if not expenses_df.empty:
+    filtered_expenses = expenses_df[
+        (expenses_df["Date"] >= pd.to_datetime(date_range[0])) &
+        (expenses_df["Date"] <= pd.to_datetime(date_range[1])) &
+        (expenses_df["Expense Type"].isin(expense_types))
+    ]
+else:
+    filtered_expenses = pd.DataFrame()
+
+# Filter inventory
+if not inventory_df.empty:
+    filtered_inventory = inventory_df[inventory_df["Item Category"].isin(inventory_categories)]
+else:
+    filtered_inventory = pd.DataFrame()
 
 # --- Compute KPIs ---
 total_revenue = filtered_sales["Revenue"].sum()
 total_cogs = filtered_sales["COGS"].sum()
-total_expenses = filtered_expenses["Amount"].sum()
+total_expenses = filtered_expenses["Amount"].sum() if not filtered_expenses.empty else 0
 gross_profit = total_revenue - total_cogs
 net_profit = gross_profit - total_expenses
 margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
 net_margin = (net_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-# --- Tabs (5 tabs) ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📋 Raw"])
+# Inventory KPIs
+total_inventory_value = filtered_inventory["Total Value"].sum() if not filtered_inventory.empty else 0
+total_items = len(filtered_inventory) if not filtered_inventory.empty else 0
+low_stock_items = len(filtered_inventory[filtered_inventory["Status"] == "Low Stock"]) if not filtered_inventory.empty else 0
+out_of_stock_items = len(filtered_inventory[filtered_inventory["Status"] == "Out of Stock"]) if not filtered_inventory.empty else 0
+
+# --- Tabs (6 tabs now) ---
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📦 Inventory", "📋 Raw"])
 
 # ===== TAB 1: OVERVIEW =====
 with tab1:
@@ -382,9 +483,8 @@ with tab1:
     with col1:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            # Revenue vs Expenses
             daily_rev = filtered_sales.groupby("Date")["Revenue"].sum().reset_index()
-            daily_exp = filtered_expenses.groupby("Date")["Amount"].sum().reset_index()
+            daily_exp = filtered_expenses.groupby("Date")["Amount"].sum().reset_index() if not filtered_expenses.empty else pd.DataFrame(columns=["Date", "Amount"])
             merged_daily = pd.merge(daily_rev, daily_exp, on="Date", how="outer").fillna(0)
             fig = go.Figure()
             fig.add_trace(go.Bar(x=merged_daily["Date"], y=merged_daily["Revenue"], name="Revenue", marker_color="#8B5A2B"))
@@ -399,28 +499,30 @@ with tab1:
     with col2:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            # Toggle for expense breakdown
             breakdown_type = st.radio(
                 "Breakdown expenses by:",
                 ["Category", "Expense Type"],
                 horizontal=True,
                 key="expense_breakdown_overview"
             )
-            if breakdown_type == "Category":
-                exp_group = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index()
-                x_col = "Expense Category"
-            else:
-                exp_group = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index()
-                x_col = "Expense Type"
+            if not filtered_expenses.empty:
+                if breakdown_type == "Category":
+                    exp_group = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index()
+                    x_col = "Expense Category"
+                else:
+                    exp_group = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index()
+                    x_col = "Expense Type"
 
-            if not exp_group.empty:
-                fig = px.pie(exp_group, names=x_col, values="Amount", hole=0.4,
-                             title=f"Expenses by {breakdown_type}",
-                             color_discrete_sequence=px.colors.qualitative.Set2)
-                fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
-                st.plotly_chart(fig, use_container_width=True)
+                if not exp_group.empty:
+                    fig = px.pie(exp_group, names=x_col, values="Amount", hole=0.4,
+                                 title=f"Expenses by {breakdown_type}",
+                                 color_discrete_sequence=px.colors.qualitative.Set2)
+                    fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No expense data for this period.")
             else:
-                st.info("No expense data for this period.")
+                st.info("No expense data available.")
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ===== TAB 2: PRODUCTS =====
@@ -553,8 +655,8 @@ with tab4:
     with col1:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            exp_trend = filtered_expenses.groupby("Date")["Amount"].sum().reset_index()
-            if not exp_trend.empty:
+            if not filtered_expenses.empty:
+                exp_trend = filtered_expenses.groupby("Date")["Amount"].sum().reset_index()
                 fig = px.line(exp_trend, x="Date", y="Amount", title="Expense Trend", markers=True,
                               color_discrete_sequence=["#D4A373"])
                 fig.update_layout(yaxis_title=CURRENCY, height=350,
@@ -569,30 +671,32 @@ with tab4:
     with col2:
         with st.container():
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            # Toggle for Expenses tab
             exp_breakdown_tab = st.radio(
                 "Breakdown by:",
                 ["Category", "Expense Type"],
                 horizontal=True,
                 key="expense_breakdown_tab"
             )
-            if exp_breakdown_tab == "Category":
-                exp_group_tab = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
-                x_col_tab = "Expense Category"
-            else:
-                exp_group_tab = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
-                x_col_tab = "Expense Type"
+            if not filtered_expenses.empty:
+                if exp_breakdown_tab == "Category":
+                    exp_group_tab = filtered_expenses.groupby("Expense Category")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
+                    x_col_tab = "Expense Category"
+                else:
+                    exp_group_tab = filtered_expenses.groupby("Expense Type")["Amount"].sum().reset_index().sort_values("Amount", ascending=False)
+                    x_col_tab = "Expense Type"
 
-            if not exp_group_tab.empty:
-                fig = px.bar(exp_group_tab, x=x_col_tab, y="Amount", title=f"Expenses by {exp_breakdown_tab}",
-                             color_discrete_sequence=["#8B5A2B"])
-                fig.update_layout(yaxis_title=CURRENCY, height=350,
-                                  plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
-                fig.update_xaxes(showgrid=False)
-                fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
-                st.plotly_chart(fig, use_container_width=True)
+                if not exp_group_tab.empty:
+                    fig = px.bar(exp_group_tab, x=x_col_tab, y="Amount", title=f"Expenses by {exp_breakdown_tab}",
+                                 color_discrete_sequence=["#8B5A2B"])
+                    fig.update_layout(yaxis_title=CURRENCY, height=350,
+                                      plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                    fig.update_xaxes(showgrid=False)
+                    fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("No expense data.")
             else:
-                st.info("No expense data.")
+                st.info("No expense data available.")
             st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("📋 Detailed Expense Transactions"):
@@ -604,8 +708,116 @@ with tab4:
 
     st.download_button("⬇️ Download Expenses CSV", filtered_expenses.to_csv(index=False), file_name="expenses.csv")
 
-# ===== TAB 5: RAW DATA (Sales) =====
+# ===== TAB 5: INVENTORY =====
 with tab5:
+    st.subheader("📦 Inventory Management")
+
+    if inventory_df.empty:
+        st.warning("No inventory data loaded. Please check your Inventory CSV URL.")
+    else:
+        # Inventory KPIs
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Inventory Value", fmt_currency(total_inventory_value))
+        col2.metric("Total Items", total_items)
+        col3.metric("Low Stock Items", low_stock_items, delta="⚠️ Needs attention" if low_stock_items > 0 else None)
+        col4.metric("Out of Stock", out_of_stock_items, delta="🚫 Reorder needed" if out_of_stock_items > 0 else None)
+
+        # Inventory filter toggle
+        inv_view = st.radio(
+            "View:",
+            ["All Items", "Raw Materials Only", "Finished Goods Only"],
+            horizontal=True
+        )
+
+        # Apply view filter
+        if inv_view == "Raw Materials Only":
+            display_inv = filtered_inventory[filtered_inventory["Item Category"].str.lower().str.contains("raw")]
+        elif inv_view == "Finished Goods Only":
+            display_inv = filtered_inventory[filtered_inventory["Item Category"].str.lower().str.contains("finished")]
+        else:
+            display_inv = filtered_inventory
+
+        if display_inv.empty:
+            st.info("No inventory items match the selected view.")
+        else:
+            # Chart 1: Inventory Value by Category
+            col1, col2 = st.columns(2)
+            with col1:
+                with st.container():
+                    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+                    inv_value_by_cat = display_inv.groupby("Item Category")["Total Value"].sum().reset_index()
+                    fig = px.pie(inv_value_by_cat, names="Item Category", values="Total Value", hole=0.4,
+                                 title="Inventory Value by Category",
+                                 color_discrete_sequence=px.colors.qualitative.Set2)
+                    fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+            with col2:
+                with st.container():
+                    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+                    # Stock status distribution
+                    status_counts = display_inv["Status"].value_counts().reset_index()
+                    status_counts.columns = ["Status", "Count"]
+                    color_map = {"In Stock": "#51cf66", "Low Stock": "#fcc419", "Out of Stock": "#ff6b6b"}
+                    fig = px.bar(status_counts, x="Status", y="Count", title="Stock Status Distribution",
+                                 color="Status", color_discrete_map=color_map)
+                    fig.update_layout(height=350, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                    fig.update_xaxes(showgrid=False)
+                    fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+            # Stock levels by item (bar chart)
+            with st.container():
+                st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+                # Sort by stock level
+                stock_sorted = display_inv.sort_values("Current Stock", ascending=False).head(20)
+                # Color by status
+                colors = stock_sorted["Status"].map(lambda x: "#51cf66" if x == "In Stock" else "#fcc419" if x == "Low Stock" else "#ff6b6b")
+                fig = px.bar(stock_sorted, x="Item Name", y="Current Stock", title="Stock Levels by Item",
+                             color="Status", color_discrete_map={"In Stock": "#51cf66", "Low Stock": "#fcc419", "Out of Stock": "#ff6b6b"})
+                fig.update_layout(height=400, plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500)
+                fig.update_xaxes(showgrid=False)
+                fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+                st.plotly_chart(fig, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            # Low stock alert
+            low_stock_items_df = display_inv[display_inv["Status"].isin(["Low Stock", "Out of Stock"])]
+            if not low_stock_items_df.empty:
+                st.subheader("⚠️ Items Needing Attention")
+                for _, row in low_stock_items_df.iterrows():
+                    status_class = "inventory-alert" if row["Status"] == "Out of Stock" else "inventory-warning"
+                    st.markdown(f"""
+                    <div class="{status_class}">
+                        <strong>{row['Item Name']}</strong> – {row['Status']} (Current: {row['Current Stock']:.0f}, Reorder Level: {row.get('Reorder Level', 0):.0f})
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            # Full inventory table
+            with st.expander("📋 Complete Inventory List"):
+                display_cols = ["Item Name", "Item Category", "Current Stock", "Unit Cost (UGX)", "Total Value", "Reorder Level", "Status"]
+                available_cols = [col for col in display_cols if col in display_inv.columns]
+                st.dataframe(
+                    display_inv[available_cols].style.format({
+                        "Unit Cost (UGX)": fmt_currency,
+                        "Total Value": fmt_currency,
+                        "Current Stock": "{:.0f}",
+                        "Reorder Level": "{:.0f}"
+                    }),
+                    use_container_width=True
+                )
+
+            # Download inventory CSV
+            st.download_button(
+                "⬇️ Download Inventory CSV",
+                display_inv.to_csv(index=False),
+                file_name="inventory_data.csv"
+            )
+
+# ===== TAB 6: RAW DATA (Sales) =====
+with tab6:
     st.subheader("📋 Sales Transaction Details")
     st.dataframe(
         filtered_sales[["Date", "Product Name", "Category", "Quantity", "Unit Price",
