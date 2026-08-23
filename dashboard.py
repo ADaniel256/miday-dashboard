@@ -15,7 +15,7 @@ if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 # ====================================================
-# COFFEE THEME CSS (with green LIVE indicator)
+# COFFEE THEME CSS
 # ====================================================
 if st.session_state.dark_mode:
     st.markdown("""
@@ -268,7 +268,7 @@ with col_title:
         <div class="fancy-header">☕ MiDAY System</div>
         <div class="live-indicator"><span class="live-dot"></span> LIVE</div>
     </div>
-    <div class="fancy-sub">Real‑time Business Intelligence · Powered by Google Sheets</div>
+    <div class="fancy-sub">Real‑time Business Stats · Powered by MiDAY Investents</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
@@ -320,7 +320,15 @@ def load_sales():
         df["Quantity"] = 0
     df["Category"] = df.get("Category", "Uncategorized").fillna("Uncategorized")
     df["Payment Status"] = df.get("Payment Status", "Unknown").fillna("Unknown")
-    df["Agent"] = df.get("Agent", "").fillna("")  # Keep Agent column
+    
+    # Agent column – properly handle empty/blank values
+    if "Agent" in df.columns:
+        df["Agent"] = df["Agent"].astype(str).str.strip()
+        df["Agent"] = df["Agent"].replace("", "Unassigned")
+        df["Agent"] = df["Agent"].fillna("Unassigned")
+    else:
+        df["Agent"] = "Unassigned"
+    
     df["Profit"] = df["Revenue"] - df["COGS"]
     df["Profit per Unit"] = (df["Profit"] / df["Quantity"]).fillna(0).round(0)
     df["Margin %"] = (df["Profit"] / df["Revenue"] * 100).round(1).fillna(0)
@@ -418,8 +426,8 @@ categories = st.sidebar.multiselect("Category", sorted(sales_df["Category"].uniq
 statuses = st.sidebar.multiselect("Payment Status", sorted(sales_df["Payment Status"].unique()), default=sorted(sales_df["Payment Status"].unique()))
 products = st.sidebar.multiselect("Product (optional)", sorted(sales_df["Product Name"].unique()), default=sorted(sales_df["Product Name"].unique()))
 
-# Agent filter (NEW)
-all_agents = sorted([a for a in sales_df["Agent"].unique() if a and str(a).strip() != ""])
+# Agent filter
+all_agents = sorted([a for a in sales_df["Agent"].unique() if a and str(a).strip() != "" and a != "Unassigned"])
 agent_filter = st.sidebar.multiselect("Agent (optional)", options=all_agents, default=all_agents) if all_agents else []
 
 expense_types = st.sidebar.multiselect(
@@ -473,10 +481,10 @@ total_items = len(filtered_inventory_latest) if not filtered_inventory_latest.em
 low_stock_items = len(filtered_inventory_latest[filtered_inventory_latest["Status"] == "Low Stock"]) if not filtered_inventory_latest.empty else 0
 out_of_stock_items = len(filtered_inventory_latest[filtered_inventory_latest["Status"] == "Out of Stock"]) if not filtered_inventory_latest.empty else 0
 
-# --- Tabs (7 tabs now) ---
+# --- Tabs (7 tabs) ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 Overview", "📊 Products", "📅 Trends", "🧾 Expenses", "📦 Inventory", "👥 Agents", "📋 Raw"])
 
-# ===== TAB 1: OVERVIEW (with Daily Cash Flow) =====
+# ===== TAB 1: OVERVIEW =====
 with tab1:
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Revenue", fmt_currency(total_revenue))
@@ -554,20 +562,19 @@ with tab1:
                 st.info("No expense data available.")
             st.markdown('</div>', unsafe_allow_html=True)
 
-# ===== TAB 2: PRODUCTS (with Profit per Unit) =====
+# ===== TAB 2: PRODUCTS =====
 with tab2:
     st.subheader("📦 Product Performance")
     prod = filtered_sales.groupby("Product Name").agg({
         "Revenue": "sum",
         "Profit": "sum",
         "Quantity": "sum",
-        "Profit per Unit": "mean"  # average profit per unit
+        "Profit per Unit": "mean"
     }).reset_index()
     prod["Margin %"] = (prod["Profit"] / prod["Revenue"] * 100).round(1).fillna(0)
     prod["Revenue per Unit"] = (prod["Revenue"] / prod["Quantity"]).fillna(0).round(0)
     prod = prod.sort_values("Revenue", ascending=False)
 
-    # Chart: Revenue vs Profit per Unit
     fig = go.Figure()
     fig.add_trace(go.Bar(x=prod["Product Name"], y=prod["Revenue"], name="Revenue", marker_color="#8B5A2B"))
     fig.add_trace(go.Scatter(x=prod["Product Name"], y=prod["Profit per Unit"], name="Profit per Unit",
@@ -596,18 +603,17 @@ with tab2:
 
     st.download_button("⬇️ Download Product Report (CSV)", prod.to_csv(index=False), file_name="product_performance.csv")
 
-# ===== TAB 3: TRENDS (with Day-of-Week) =====
+# ===== TAB 3: TRENDS =====
 with tab3:
     st.subheader("📅 Sales Trends and Breakdowns")
 
-    # ---- Day-of-Week Sales ----
+    # Day-of-Week Sales
     with st.container():
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         st.subheader("📆 Sales by Day of Week")
         dow = filtered_sales.copy()
         dow["Day of Week"] = dow["Date"].dt.day_name()
         dow_agg = dow.groupby("Day of Week")["Revenue"].sum().reset_index()
-        # Order days correctly
         days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         dow_agg["Day of Week"] = pd.Categorical(dow_agg["Day of Week"], categories=days_order, ordered=True)
         dow_agg = dow_agg.sort_values("Day of Week")
@@ -865,17 +871,27 @@ with tab5:
             file_name="inventory_history.csv"
         )
 
-# ===== TAB 6: AGENTS (NEW) =====
+# ===== TAB 6: AGENTS =====
 with tab6:
     st.subheader("👥 Agent Performance")
 
-    # Filter out empty agent values
-    agent_data = filtered_sales[filtered_sales["Agent"].notna() & (filtered_sales["Agent"] != "")]
+    # Debug expander – shows what's in the Agent column
+    with st.expander("🔍 Debug – Agent Data Check"):
+        st.write("**Columns in sales data:**", list(sales_df.columns))
+        st.write("**Unique Agent values (all):**", sales_df["Agent"].unique().tolist())
+        st.write("**Agent value counts:**", sales_df["Agent"].value_counts().to_dict())
+        st.write("**Sample of Agent column:**", sales_df["Agent"].head(10).tolist())
+        st.write(f"**Total rows in filtered_sales:** {len(filtered_sales)}")
+        st.write(f"**Rows with agent data (non-empty):** {len(filtered_sales[filtered_sales['Agent'].notna() & (filtered_sales['Agent'] != '')])}")
+
+    # Filter out rows where Agent is empty or "Unassigned"
+    agent_data = filtered_sales[filtered_sales["Agent"].notna() & (filtered_sales["Agent"] != "") & (filtered_sales["Agent"] != "Unassigned")]
 
     if agent_data.empty:
-        st.info("No agent data available. Please add agent names to your sales records.")
+        st.warning("No agent data found. The debug expander above shows what's in the 'Agent' column.")
+        st.info("If the column has values but they're not showing, the issue might be with the date range or other filters.")
     else:
-        # KPIs for agents
+        # KPIs
         total_agents = agent_data["Agent"].nunique()
         total_agent_revenue = agent_data["Revenue"].sum()
         total_agent_orders = len(agent_data)
@@ -899,7 +915,7 @@ with tab6:
         agent_perf["Margin %"] = (agent_perf["Profit"] / agent_perf["Revenue"] * 100).round(1).fillna(0)
         agent_perf = agent_perf.sort_values("Revenue", ascending=False)
 
-        # Chart: Agent Revenue
+        # Chart: Agent Revenue vs Avg Order Value
         fig = go.Figure()
         fig.add_trace(go.Bar(x=agent_perf["Agent"], y=agent_perf["Revenue"], name="Revenue", marker_color="#8B5A2B"))
         fig.add_trace(go.Scatter(x=agent_perf["Agent"], y=agent_perf["Avg Order Value"], name="Avg Order Value",
