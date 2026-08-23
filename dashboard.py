@@ -269,7 +269,7 @@ with col_title:
         <div class="fancy-header">☕ MiDAY System</div>
         <div class="live-indicator"><span class="live-dot"></span> LIVE</div>
     </div>
-    <div class="fancy-sub">Real‑time Business Intelligence · Powered by Google Sheets</div>
+    <div class="fancy-sub">Real‑time Business Stats · Powered by MiDAY Investments</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
