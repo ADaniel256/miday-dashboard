@@ -268,7 +268,7 @@ with col_title:
         <div class="fancy-header">☕ MiDAY System</div>
         <div class="live-indicator"><span class="live-dot"></span> LIVE</div>
     </div>
-    <div class="fancy-sub">Real‑time Business Stats · Powered by MiDAY Investents</div>
+    <div class="fancy-sub">Real‑time Business Stats · Powered by MiDAY Investments</div>
     <div class="fancy-divider"></div>
     """, unsafe_allow_html=True)
 
@@ -494,7 +494,7 @@ with tab1:
     col5.metric("Net Profit", fmt_currency(net_profit))
     col6.metric("Net Margin", f"{net_margin:.1f}%")
 
-    # ---- Daily Cash Flow ----
+    # Daily Cash Flow
     with st.container():
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         st.subheader("💰 Daily Cash Flow (Revenue – Expenses)")
@@ -944,6 +944,72 @@ with tab6:
             }), use_container_width=True)
 
         st.download_button("⬇️ Download Agent Report (CSV)", agent_perf.to_csv(index=False), file_name="agent_performance.csv")
+
+        # ---- New: Agent Performance Over Time (Weekly / Monthly) ----
+        st.markdown("---")
+        st.subheader("📈 Agent Performance Over Time")
+
+        agent_list = ["All Agents"] + sorted(agent_data["Agent"].unique().tolist())
+        selected_agent = st.selectbox("Select Agent", agent_list)
+
+        time_gran = st.radio("Granularity", ["Weekly", "Monthly"], horizontal=True)
+
+        if selected_agent == "All Agents":
+            agent_time_data = agent_data.copy()
+        else:
+            agent_time_data = agent_data[agent_data["Agent"] == selected_agent]
+
+        if not agent_time_data.empty:
+            # Create period column
+            if time_gran == "Weekly":
+                agent_time_data["Period"] = agent_time_data["Date"].dt.to_period("W").apply(lambda r: r.start_time.date())
+            else:
+                agent_time_data["Period"] = agent_time_data["Date"].dt.to_period("M").apply(lambda r: r.start_time.date())
+
+            # Aggregate
+            time_agg = agent_time_data.groupby("Period").agg({
+                "Revenue": "sum",
+                "Profit": "sum",
+                "Quantity": "sum",
+                "Date": "count"
+            }).rename(columns={"Date": "Orders"}).reset_index()
+            time_agg["Margin %"] = (time_agg["Profit"] / time_agg["Revenue"] * 100).round(1).fillna(0)
+
+            # Chart
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=time_agg["Period"], y=time_agg["Revenue"], name="Revenue", marker_color="#8B5A2B"))
+            fig.add_trace(go.Scatter(x=time_agg["Period"], y=time_agg["Profit"], name="Profit",
+                                     mode="lines+markers", yaxis="y2",
+                                     line=dict(color="#10b981", width=3), marker=dict(size=8)))
+            fig.update_layout(
+                title=f"{selected_agent} – {time_gran} Performance",
+                yaxis=dict(title=f"{CURRENCY} (Revenue)", side="left"),
+                yaxis2=dict(title=f"{CURRENCY} (Profit)", overlaying="y", side="right"),
+                height=400,
+                plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", transition_duration=500
+            )
+            fig.update_xaxes(showgrid=False)
+            fig.update_yaxes(showgrid=True, gridcolor="rgba(139,90,43,0.06)")
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Table
+            with st.expander(f"📋 {time_gran} Breakdown for {selected_agent}"):
+                st.dataframe(time_agg.style.format({
+                    "Revenue": fmt_currency,
+                    "Profit": fmt_currency,
+                    "Quantity": "{:,}",
+                    "Orders": "{:,}",
+                    "Margin %": "{:.1f}%"
+                }), use_container_width=True)
+
+            # Download
+            st.download_button(
+                f"⬇️ Download {selected_agent} {time_gran} Data (CSV)",
+                time_agg.to_csv(index=False),
+                file_name=f"{selected_agent}_{time_gran.lower()}_performance.csv"
+            )
+        else:
+            st.info("No data for the selected agent in this period.")
 
 # ===== TAB 7: RAW DATA =====
 with tab7:
